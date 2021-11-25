@@ -19,7 +19,7 @@ _f_lob;music.too_soft
 _f_mea;music.too_melodious
 _f_meb;music.too_little_melodious
 _f_poa;music.too_mainstream
-_f_pob;music.too_off
+_f_pob;music.too_niche
 _f_rha;music.too_rhythmic
 _f_rhb;music.too_unrhythmic
 _f_sta;music.too_schematic
@@ -32,7 +32,7 @@ _f_vo;music.bad_vocals
 _s_at;social.incongruent_attitude
 _s_au;social.not_authentic
 _s_ex;social.too_often_heard
-_s_id;social.no_identifcation
+_s_id;social.no_identification
 _s_mem;social.bad_experiences
 _so_i;social.not_peer_approved
 _so_o;social.reject_fans

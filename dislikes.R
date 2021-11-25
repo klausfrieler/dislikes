@@ -16,11 +16,11 @@ factor_map <- c("PC_overload" = "PC_too_avant",
                 "PC_soft" = "PC_too_fem", 
                 "PC_energetic" = "PC_too_masc")
 
-lpa_class_labels <- tribble(~type, ~degree, ~low, ~hi, 
-                            "style",  "strong", "lowbrow", "highbrow",
-                            "style",  "slight",  "small deficits", "tolerable",
+lpa_class_labels <- tribble(~type, ~degree, ~class1, ~class2, 
+                            "style",  "strong", "highbrow", "lowbrow",
+                            "style",  "slight",  "lowbrow", "highbrow",
                             "artist", "strong", "highbrow", "lowbrow", 
-                            "artist", "slight", "tolerable", "lowbrow"
+                            "artist", "slight", "lowbrow", "highbrow"
 )
 education_labels <- c("in school", 
                       "without degree", 
@@ -43,7 +43,7 @@ bad_vars <- c("emo.too_expressive",
               "music.too_mainstream", 
               "music.too_melodious", 
               "music.too_much_change", 
-              "music.too_off", 
+              "music.too_niche", 
               "music.too_rhythmic", 
               "music.too_slow", 
               "music.too_soft", 
@@ -52,6 +52,13 @@ bad_vars <- c("emo.too_expressive",
               "social.bad_experiences", 
               "social.not_peer_approved", 
               "social.too_often_heard")
+bad_vars2 <- setdiff(bad_vars, c("music.disliked_instruments", 
+                                 "music.too_dissonant", 
+                                 "music.too_mainstream", 
+                                 "music.too_niche", 
+                                 "music.too_unrhythmic", 
+                                 "music.too_loud"))
+                                 
 style_labels <- c("12" = "Schlager",
                   "14" = "Traditional",
                   "10" = "HipHop",
@@ -130,6 +137,7 @@ read_data <- function(fname = "data/dislikes_data_merrill.xlsx"){
 
 setup_workspace <- function(){
   master <- read_data()
+  master <- filter_bad_raters(master)
   var_map <- read_var_map()
   labels <- var_map$label
   names(labels) <- var_map$code
@@ -137,22 +145,71 @@ setup_workspace <- function(){
   browser()
   master$education <- education_labels[as.numeric(master$education)]
   master$job <- job_labels[as.numeric(master$job)]
-  master_alt <- add_alternate_factors(master)
+  master_f4 <- add_alternate_factors(master)
+  master_f5 <- add_alternate_factors(master, bad_vars2)
   assign("master", master, globalenv())
-  assign("master_alt", master_alt, globalenv())
+  assign("master_f4", master_f4, globalenv())
+  assign("master_f5", master_f5, globalenv())
+}
+get_rating_stats <- function(ratings, thresh = .9){
+  #vector of raw ratings with values 1-5
+  #browser()
+  if(length(ratings) == 0 || all(is.na(ratings))){
+    return(NA)
+  }
+  ratings_f <- factor(ratings, levels = 1:5)
+  tab <- table(ratings_f)
+  ratings_g <- fct_collapse(ratings_f, extreme_low = c("1"), extreme_high = c("5"), med = c("2", "3", "4"))
+  tab_g  <- table(ratings_g) %>% prop.table()
+  if(tab_g[["extreme_low"]] >= thresh){
+    return("polarizer_low")
+  }
+  if(tab_g[["extreme_high"]] >= thresh){
+    return("polarizer_high")
+  }
+  if((tab_g[["extreme_high"]] + tab_g[["extreme_low"]]) >= thresh){
+    return("polarizer_high")
+  }
+  "moderato"
 }
 
-add_alternate_factors <- function(data){
+filter_bad_raters <- function(data){
+  bad_ids <- data %>%  
+    select(p_id, type, degree, where(is.numeric), -starts_with("PC")) %>% 
+    pivot_longer(-c(p_id, type, degree)) %>% 
+    group_by(p_id, type, degree) %>% 
+    summarise(rating_type = get_rating_stats(value)) %>% 
+    ungroup() %>% 
+    group_by(p_id) %>% 
+    summarise(rt = sum(str_detect(rating_type, "pola")), n = n()) %>% 
+    filter(rt == n, rt > 0, n > 2) %>% 
+    pull(p_id)
+  data %>% filter(!(p_id %in% bad_ids))
+}
+
+add_alternate_factors <- function(data, exclude_vars = bad_vars2 ){
   set.seed(666)
-  data <-  data %>% select(-starts_with("PC")) %>% select(-all_of(bad_vars)) %>% select(-starts_with(c("reaction")))
+  data <-  data %>% 
+    select(-starts_with("PC")) %>% 
+    select(-all_of(exclude_vars)) 
   impute <- mice::mice(data = data, m = 1, method = "pmm", maxit = 10, seed = 500)
   data <- complete(impute, 1) %>% as_tibble()  
-  efa <- get_efa(data, n_factors = 6, with_optimal = T, with_panels = F, rotate = "oblimin") 
+  efa <- get_efa(data %>% select(-starts_with(c("reaction"))), n_factors = 6, with_optimal = T, with_panels = F, rotate = "oblimin") 
   browser()
+  n_factors <- dim(efa$scores)[2]
+  if(n_factors == 4){
+    factor_names <- c("PC_too_simple", "PC_displeasure", "PC_too_little_impact", "PC_social")
+  }
+  else if(n_factors == 5){
+    factor_names <- c("PC_too_simple",  "PC_too_niche", "PC_displeasure", "PC_too_little_impact", "PC_social")
+  }
+  else{
+    stop("Only for 4 or 5 factors")
+  }
   bind_cols(data, 
             efa$scores %>% 
               as_tibble() %>% 
-              set_names(c("PC_too_simple", "PC_displeasure", "PC_too_little_impact", "PC_social")))  
+              set_names(factor_names))  
 }
 
 tidy_assoc_stats <- function(as){
@@ -165,8 +222,13 @@ tidy_assoc_stats <- function(as){
   bind_cols(tibble(phi = as$phi, contingency = as$contingency, cramers_v = as$cramer))
 }
 
-add_lpa_class <- function(data, type = "style", degree = "strong"){
-  var_name <- sprintf("lpa_class_%s_%s", type, degree)
+add_lpa_class <- function(data, type = "style", degree = "strong", use_same_name = F){
+  if(use_same_name){
+    var_name <- "lpa_class"
+  }
+  else{
+    var_name <- sprintf("lpa_class_%s_%s", type, degree)
+  }
   #browser()
   if(var_name %in% names(data)){
     messagef("Found %s in data", var_name)
@@ -186,10 +248,11 @@ add_lpa_class <- function(data, type = "style", degree = "strong"){
   first_PC <- names(data)[str_detect(names(data), "^PC_")][1] 
   tmp <- get_data(lpa) %>% left_join(data %>% 
                                        select(starts_with(first_PC), 
-                                              gender, p_id, style, type, degree, age_group), 
+                                              gender, p_id, style, type, degree, age_group, education, job), 
                                      by = first_PC) %>% 
-    mutate(lpa_class = factor(CPROB1 > .5, labels = c(labels$low, labels$hi)))
+    mutate(lpa_class = factor(Class, labels = c(labels$class1, labels$class2)))
   check_stats <- tmp %>% group_by(lpa_class) %>% summarise(across(starts_with("PC_"), mean))
+  messagef("Type = %s, degree = %s", type, degree)
   print(check_stats)
   #if(check_stats$PC_complexity[1] > check_stats$PC_complexity[2]){
   #  tmp <- tmp %>% mutate(lpa_class = factor(lpa_class, labels = levels(lpa_class)[c(2,1)]))
@@ -198,6 +261,11 @@ add_lpa_class <- function(data, type = "style", degree = "strong"){
   tmp %>% rename(!!var_name := lpa_class) %>% select(-model_number, -classes_number, -Class, -CPROB1, -CPROB2)
 }
 
+add_all_lpa_classes <- function(data){
+  map_dfr(data %>% group_split(type, degree), function(x){
+    add_lpa_class(x, type = unique(x$type), degree = unique(x$degree), use_same_name = T)
+  })
+}
 get_sig_stars <- Vectorize(function(p_val){
   if(p_val <.001) return("***")
   if(p_val <.01) return("**")
@@ -298,16 +366,19 @@ get_prop_table <- function(data,
   }
 }
 
-get_all_contingency_tables <- function(data, output_format = "df"){
+get_all_contingency_tables <- function(data, add_lpa_class = T, output_format = "df", outdir = "plots"){
   types <- unique(data$type)
   degrees <- unique(data$degree)
   groups <- c("gender", "age_group", "lpa_class")
   target_vars <- c("style", "lpa_class")
-  data <- map_dfr(types, function(ty){
-    map_dfr(degrees, function(deg){
-      add_lpa_class(data, ty, deg)  
+  if(add_lpa_class){
+    data <- map_dfr(types, function(ty){
+      map_dfr(degrees, function(deg){
+        add_lpa_class(data, ty, deg)  
+      })
     })
-  })
+    
+  }
 
   map <- purrr::map
   map(types, function(ty){
@@ -323,7 +394,7 @@ get_all_contingency_tables <- function(data, output_format = "df"){
                                 target_var = tv, 
                                 output_format = output_format)
             if(output_format == "plot"){
-              ggsave(sprintf("%s_%s_%s_%s.png", ty, deg, g, tv), dpi = 500)
+              ggsave(sprintf("%s/%s_%s_%s_%s.png", outdir, ty, deg, g, tv), dpi = 500)
               return(NULL)
             }
             q
