@@ -113,6 +113,11 @@ get_efa <- function(data, quest_type = "" , n_factors = 3, rotate = "varimax", w
   if(only_factors){
     return(n_factors)
   }
+  browser()
+  kmo <- psych::KMO(tmp)
+  bart <- psych::cortest.bartlett(tmp)
+  print(kmo)
+  print(bart)
   psych::principal(tmp, n_factors, rotate = rotate)
 }
 
@@ -134,6 +139,15 @@ read_data <- function(fname = "data/dislikes_data_merrill.xlsx"){
   data$age_group <- factor(data$age <= 30, labels = c(">30", "<=30"))
   data %>% filter(gender != "D")
 }
+add_style_counts <- function(data){
+  data %>% 
+    group_by(type, degree, style) %>% 
+    mutate(style_count = n())  %>% 
+    ungroup() %>% 
+    group_by(type, degree) %>% 
+    mutate(norm_style_count = style_count/n()) %>% 
+    ungroup()
+}
 
 setup_workspace <- function(){
   master <- read_data()
@@ -145,10 +159,14 @@ setup_workspace <- function(){
   browser()
   master$education <- education_labels[as.numeric(master$education)]
   master$job <- job_labels[as.numeric(master$job)]
-  master_f4 <- add_alternate_factors(master)
+  
+  #master_f4 <- add_alternate_factors(master)
   master_f5 <- add_alternate_factors(master, bad_vars2)
+  
+  master <- add_style_counts(master)
+  master_f5 <- add_style_counts(master_f5)
   assign("master", master, globalenv())
-  assign("master_f4", master_f4, globalenv())
+  #assign("master_f4", master_f4, globalenv())
   assign("master_f5", master_f5, globalenv())
 }
 get_rating_stats <- function(ratings, thresh = .9){
