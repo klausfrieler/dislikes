@@ -17,6 +17,7 @@ get_pc_graph <- function(master,
   suffStat <- list(C = cor_data, n = nrow(red))
   pc.fit <- pcalg::pc(suffStat, indepTest = pcalg::gaussCItest, p = ncol(red), alpha = alpha)
   labels <- names(red)
+  browser()
   #adjm <- wgtMatrix(getGraph(pc.fit), transpose = FALSE)
   #ig_network <- graph_from_adjacency_matrix(adjm, mode = "directed", weighted = T)
   ig_network <- graph_from_graphnel(getGraph(pc.fit), name = TRUE, weight = TRUE, unlist.attrs = TRUE)
