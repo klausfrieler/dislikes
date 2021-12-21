@@ -708,6 +708,25 @@ scale_definition_from_keys <- function(key_file = "keys_df.xlsx", sheet = "keys2
   })
 }
 
+comp_cor_mat_entries <- function(data){
+  cor_mat <-  data %>% corrr::correlate()
+  vars <- unique(cor_mat$term)
+  map_dfr(vars, function(v1){
+    map_dfr(vars, function(v2){
+      if(v1 == v2){
+        return(NULL)
+      }
+      #browser()
+      var_cor <- cor_mat %>% filter(term == v1) %>% pull(all_of(v2))
+      row1 <- cor_mat %>% filter(term == v1) %>% select(-term, -all_of(c(v1, v2))) %>% t() %>% as.vector()
+      row2 <- cor_mat %>% filter(term == v2) %>% select(-term, -all_of(c(v1, v2))) %>% t() %>% as.vector()
+      cos_sim <- sum(row1 * row2)/(sqrt(sum(row1^2)))/sqrt(sum(row2^2))
+      euclid_d <- sqrt(sum((row1 - row2)^2))
+      max_d <- max(sum((row1 - row2)^2))
+      tibble(var1 = v1, var2 = v2, var_cor = var_cor, cos_sim = cos_sim, d = euclid_d, max_d = max_d)
+    })
+  })
+}
 # analyse_lpa_classes <- function(data){
 #   lpa_style_strong <- add_lpa_class(master, "style", "strong") %>% rename(lpa_class = lpa_class_style_strong)
 #   lpa_style_slight <- add_lpa_class(master, "style", "slight") %>% rename(lpa_class = lpa_class_style_sligth)
