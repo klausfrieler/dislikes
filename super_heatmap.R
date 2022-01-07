@@ -14,7 +14,6 @@ super_cor_plot <- function(cor_mat,
   id_levels <- factor(row.names(cor_mat))
   tmp_df <- as.data.frame(cor_mat)
   tmp_df$id <- factor(row.names(tmp_df), levels = id_levels) 
-  browser()
   #tmp_df <- melt(tmp_df)
   tmp_df <- tmp_df %>% pivot_longer(-id)
   #tmp_df$id <- factor(tmp_df$id, levels=rev(levels(tmp_df$id)))
@@ -58,7 +57,7 @@ super_heat_map <- function(melted_df,
   }else{
     gg <- gg + scale_fill_viridis(name = scale_name)
   }
-  
+  gg <- gg + geom_text(aes(label = round(value, 2)), color = "white")   
   gg <- gg + coord_equal()
   #gg <- gg + facet_wrap(~type, ncol=2)
   gg <- gg + labs(x = NULL, y = NULL, title = title)

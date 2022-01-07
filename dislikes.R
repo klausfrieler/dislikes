@@ -186,6 +186,25 @@ check_rater_polarities <- function(data, var_map){
     mutate(r_paradox = n_paradoxes/n/length(polarities))
 }
 
+check_rater_extremity <- function(data){
+  data <- data %>% select(p_id, type, degree, all_of(num_vars))
+  classify_rating <- Vectorize(function(x){
+    if(is.na(x)) NA
+    else if(x < 3) "low"
+    else if(x > 3) "high"
+    else if(x == 3) "medium"
+  })
+  stats <- data %>% pivot_longer(-c(p_id, type, degree)) %>% mutate(rating_class = classify_rating(value))
+  browser()
+  stats %>% 
+    group_by(p_id, type, degree) %>% 
+    summarise(n = sum(!is.na(value)), 
+              high_rate = sum(rating_class == "high", na.rm = T)/n,
+              low_rate = sum(rating_class == "low", na.rm = T)/n, 
+              l = log(high_rate/low_rate + .01), 
+              .groups = "drop")  
+    
+}
 read_data <- function(fname = "data/dislikes_data_merrill.xlsx"){
   data <- readxl::read_xlsx(fname)
   data$p_id <- as.character(data$p_id)
@@ -496,7 +515,7 @@ tidy_assoc_stats <- function(as){
   bind_cols(tibble(phi = as$phi, contingency = as$contingency, cramers_v = as$cramer))
 }
 
-add_lpa_class <- function(data, type = "style", degree = "strong", use_same_name = F){
+add_lpa_class <- function(data, type = "style", degree = "strong", use_same_name = F, n_classes = 2){
   if(use_same_name){
     var_name <- "lpa_class"
   }
@@ -518,21 +537,35 @@ add_lpa_class <- function(data, type = "style", degree = "strong", use_same_name
     
   }
   labels  <- lpa_class_labels %>% filter(type == !!type, degree == !!degree) 
-  lpa <- data %>%  select(starts_with("PC")) %>% estimate_profiles(2)
-  first_PC <- names(data)[str_detect(names(data), "^PC_")][1] 
-  tmp <- get_data(lpa) %>% left_join(data %>% 
-                                       select(starts_with(first_PC), 
-                                              gender, p_id, style, type, degree, age_group, education, job), 
-                                     by = first_PC) %>% 
-    mutate(lpa_class = factor(Class, labels = c(labels$class1, labels$class2)))
-  check_stats <- tmp %>% group_by(lpa_class) %>% summarise(across(starts_with("PC_"), mean))
+  lpa <- data %>%  select(starts_with("MR")) %>% estimate_profiles(n_classes)
+  plot_profiles(lpa, add_line = T, rawdata = F) + coord_flip()
+  browser()
+  first_PC <- names(data)[str_detect(names(data), "^MR_")][1] 
+  tmp <- bind_cols(data, get_data(lpa) %>% select(Class))
+  # tmp <- get_data(lpa) %>% left_join(data %>% 
+  #                                      select(starts_with(first_PC), 
+  #                                             gender, p_id, style, type, degree, age_group, education, job), 
+  #                                    by = c("first_PC", "gender", "p_id", type, degree, age_group)) 
+  if(nrow(labels) > 0){
+    tmp <- tmp %>% 
+      mutate(lpa_class = factor(Class, labels = c(labels$class1, labels$class2)))
+  }
+  else{
+    tmp <- tmp %>% 
+      mutate(lpa_class = factor(Class))
+    
+  }
+  check_stats <- tmp %>% group_by(lpa_class) %>% summarise(across(starts_with("MR_"), mean))
+  check_stats_t <- check_stats %>% 
+    pivot_longer(-lpa_class) %>% 
+    pivot_wider(id_cols = name, names_from = lpa_class, values_from = value, names_prefix = "lpa_class") 
   messagef("Type = %s, degree = %s", type, degree)
-  print(check_stats)
+  print(check_stats_t)
   #if(check_stats$PC_complexity[1] > check_stats$PC_complexity[2]){
   #  tmp <- tmp %>% mutate(lpa_class = factor(lpa_class, labels = levels(lpa_class)[c(2,1)]))
   #}
     
-  tmp %>% rename(!!var_name := lpa_class) %>% select(-model_number, -classes_number, -Class, -CPROB1, -CPROB2)
+  tmp %>% rename(!!var_name := lpa_class) %>% select( -Class)
 }
 
 add_all_lpa_classes <- function(data){
@@ -713,7 +746,7 @@ comp_cor_mat_entries <- function(data){
   vars <- unique(cor_mat$term)
   map_dfr(vars, function(v1){
     map_dfr(vars, function(v2){
-      if(v1 == v2){
+      if(v1 >= v2){
         return(NULL)
       }
       #browser()
@@ -722,7 +755,7 @@ comp_cor_mat_entries <- function(data){
       row2 <- cor_mat %>% filter(term == v2) %>% select(-term, -all_of(c(v1, v2))) %>% t() %>% as.vector()
       cos_sim <- sum(row1 * row2)/(sqrt(sum(row1^2)))/sqrt(sum(row2^2))
       euclid_d <- sqrt(sum((row1 - row2)^2))
-      max_d <- max(sum((row1 - row2)^2))
+      max_d <- max(abs((row1 - row2)))
       tibble(var1 = v1, var2 = v2, var_cor = var_cor, cos_sim = cos_sim, d = euclid_d, max_d = max_d)
     })
   })
