@@ -2,7 +2,7 @@ library(tidyverse)
 
 get_manova <- function(data, 
                        scale_by_id = T, 
-                       var_names = "MR", 
+                       var_names = "DS_", 
                        predictors = c("type", "degree", "style", "age_group", "gender", "p_id"),
                        exclude_preds = "",
                        tidy_up = F){

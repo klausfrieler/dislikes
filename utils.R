@@ -1,3 +1,26 @@
+freq_table <- function(x, prop_var) {
+  prop_var  <- enquo(prop_var)
+  tmp <- x %>% 
+    group_by( !!prop_var) %>% 
+    summarise(n = n()) %>% 
+    mutate(freq = n /sum(n)) %>% 
+    ungroup
+  tmp
+  #tmp %>% ggplot(aes_string(x = rlang::quo_text(prop_var), y= "freq")) + geom_col()
+}
+
+freq2_table <- function(x, group_var, prop_var) {
+  group_var <- enquo(group_var)
+  prop_var  <- enquo(prop_var)
+  tmp <- x %>% 
+    group_by(!!group_var, !!prop_var) %>% 
+    summarise(n = n()) %>% 
+    mutate(freq = n /sum(n)) %>% 
+    ungroup
+  tmp
+  #tmp %>% ggplot(aes_string(x = rlang::quo_text(prop_var), y= "freq")) + geom_col()
+}
+
 impute_mice <- function(data){
   impute <- mice::mice(data = data, m = 1, method = "pmm", maxit = 10, seed = 500)
   complete(impute, 1) %>% as_tibble()  
@@ -61,15 +84,20 @@ comp_cor_mat_entries <- function(data){
 #     pivot_longer(cols = starts_with("PC")) %>% 
 #     group_by(lpa_class, name) %>% summarise(m = mean(value))
 # }
-
-scale_definition_from_keys <- function(key_file = "keys_df.xlsx", sheet = "keys_v3"){
+fashion_subscale_names <- function(subscale_names){
+  str_remove(subscale_names, "^DS_") %>% 
+    str_replace_all("_", " ") %>% 
+    str_to_title()
+}
+scale_definition_from_keys <- function(key_file = "data/keys_df.xlsx", sheet = "keys_v3"){
   key_tmp <- readxl::read_xlsx(key_file, sheet = sheet)
   factor_names <- key_tmp %>% select(-1) %>% names()
   map_dfr(factor_names, function(fn){
     #browser()
     items <- key_tmp %>%  filter(!!sym(fn) > 0)  %>% pull(rowname) %>% sort() 
-    tibble(subscale = fn, n_items = length(items), items = items %>% paste(collapse = ";"))
-  })
+    tibble(subscale = fn, n_items = length(items), items = items %>% paste(collapse = ", "))
+  }) %>% mutate(subscale = fashion_subscale_names(subscale)) %>% 
+    set_names(c("Subscale", "No. Items", "Items"))
 }
 
 
@@ -124,7 +152,7 @@ get_efa <- function(data,
   bart <- psych::cortest.bartlett(tmp)
   #print(kmo)
   #print(bart)
-  if(method == "princpal"){
+  if(method[1] == "princpal"){
     psych::principal(tmp, n_factors, rotate = rotate)
   }
   else{

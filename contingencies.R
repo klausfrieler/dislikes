@@ -15,8 +15,13 @@ get_prop_table <- function(data,
                            target_var = "style",
                            keep_levels = T,
                            output_format = "list"){
-  
-  tmp <- data %>% filter(type == !!type, degree == !!degree)
+  tmp <- data
+  if(nchar(type) > 0 ){
+    tmp <- tmp %>% filter(type == !!type)
+  }
+  if(nchar(degree) > 0){
+    tmp <- tmp %>% filter(degree == !!degree)
+  }
   if(group == target_var){
     browser()
     return(NULL)
@@ -55,7 +60,7 @@ get_prop_table <- function(data,
   prop_tab_1 <- tab %>% prop.table(1) %>% round(2)
   prop_tab_2 <- tab %>% prop.table(2) %>% round(2)
   metadata <- tibble(type = type, degree = degree, group  = orig_group, target_var = orig_target_var)
-  browser()
+  #browser()
   if(output_format == "list"){
     list(metadata = metadata,
          tab = tab, 
@@ -93,7 +98,7 @@ get_prop_table <- function(data,
       select(id, everything())
   }
   else if (output_format == "plot"){
-    ggassoc(tab, x_lab = group, y_lab = target_var)
+    ggassoc(tab, x_lab = group, y_lab = target_var, subtitle = sprintf("%s x %s (%s, %s)", group, target_var, type, degree))
   }
   else {
     stop(printf("Unrecognized output format: %s", output_format))
@@ -139,3 +144,26 @@ get_all_contingency_tables <- function(data, add_lpa_class = T, output_format = 
   }) %>% set_names(types)
 }
 
+get_chisq_stats <- function(data, group_var, target_var){
+  types <- unique(data$type)
+  degrees <- unique(data$degree)
+  map_dfr(types, function(ty){
+    map_dfr(degrees, function(deg){
+      q <- get_prop_table(data, 
+                          type = ty, 
+                          degree = deg, 
+                          group = group_var, 
+                          target_var = target_var, 
+                          output_format = "list")
+      tibble(type = ty, degree = deg, group = group_var, target = target_var, 
+             statistic = q$chisq$statistic_chisq,
+             df = q$chisq$df_chisq,
+             p_value = q$chisq$p_value_chisq,
+             cramers_v = q$chisq$cramers_v 
+      ) 
+    })
+    }) %>% 
+    mutate(p_value_adj = p.adjust(p_value),
+           sig = get_sig_stars(p_value_adj))
+
+}

@@ -118,9 +118,15 @@ setup_workspace <- function(reload = T, add_to_global_env = F){
   #browser()
   master$education <- education_labels[as.numeric(master$education)]
   master$job <- job_labels[as.numeric(master$job)]
+  master <- master %>% 
+    mutate(age = as.numeric(age), 
+           grade = as.numeric(grade)) %>% 
+    mutate(higher_ed = education %in% c("bachelor", "master", "promotion"), 
+           at_least_a_level = education %in% c("bachelor", "master", "promotion", "a-levels"), 
+           other_ed = !at_least_a_level)
+  master <- master %>% group_by(p_id) %>% mutate(n_conditions = n()) %>% ungroup() 
   master <- master %>% mutate(full_type = sprintf("%s_%s", type, degree))
   master <- add_scores_from_key(master, key_file = "data/keys_df.xlsx", sheet = "keys_v3", impute_method = "mice")
-  
   master <- add_style_counts(master)
   master <- add_all_lpa_classes(master)
   master <- add_total_lpa_class(master)
@@ -317,6 +323,7 @@ add_total_lpa_class <- function(data){
     mutate(total_lpa_class = get_class(lpa_class)) %>% 
     mutate(total_lpa_class = factor(total_lpa_class, levels = lpa_classes)) %>% ungroup()
 }
+
 add_scores_from_key <- function(data, 
                                 key_file = "data/keys_df.xlsx", 
                                 sheet = "keys_v3", 
