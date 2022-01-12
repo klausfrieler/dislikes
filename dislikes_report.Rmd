@@ -1,20 +1,18 @@
 ---
-title: "Dislikes Results"
+title: "Dislikes: Results"
 author: "Klaus Frieler"
-date: "07.01.2021"
-fig_width: 12 
-fig_height: 8 
+date: "11.01.2022"
 output: word_document
 
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 library(tidyverse)
 library(flextable)
 source("dislikes.R")
-source("networks.R")
-master <- setup_workspace(F)
+#source("networks.R")
+master <- setup_workspace(F, F)
 metadata <- master %>% distinct(p_id, .keep_all = T) %>% 
   select(p_id, gender, age, job, education, age_group, degree) %>% 
   mutate(age = as.numeric(age)) %>% 
@@ -25,30 +23,40 @@ metadata <- master %>% distinct(p_id, .keep_all = T) %>%
 
 ## Participants
 
-We collected data from a total of 639 participants. After inspecting the rating behaviour for anomnalities, we excluded 12 participants, who showed 90% of all their ratings on the extreme end of the ratings scales (low or high). After this step, 
-`r nrow(metadata)` participants (`r nrow(metadata %>% filter(gender == "F"))` female, `r nrow(metadata %>% filter(gender == "M"))` male) stayed in the study, with a median age of `r median(metadata$age, na.rm = T)` (range: `r sprintf("%s-%s", min(metadata$age, na.rm = T), max(metadata$age, na.rm = T))`, IQR = `r IQR(metadata$age, na.rm = T) %>% round(1)`). The age distribution appeared to be a bimodal distribution, which is rather typical for this kind of online study. Fitting a Gaussian Mixture Model (using the MClust package for R) corroborated the visual impression of two clusters. We found one age group with  participants up to 30 years (`r (table(metadata$age_group))["<=30"]`, `r (table(metadata$age_group) %>% prop.table() %>% round(3) %>% magrittr::multiply_by(100))["<=30"]`%), and another one with participants older than 30 years (`r (table(metadata$age_group))[">30"]`,  
-`r (table(metadata$age_group) %>% prop.table() %>% round(3) %>% magrittr::multiply_by(100))[">30"]`%). We will use this as a variable for some of analyses down below.
+We collected data from a total of 639 participants. After inspecting the rating behaviour for anomnalities, we excluded 12 participants, who showed 90% of all their ratings on the extreme end of the ratings scales (low or high). After this step,  `r nrow(metadata)` participants (`r nrow(metadata %>% filter(gender == "F"))` female, `r nrow(metadata %>% filter(gender == "M"))` male) stayed in the study, with a median age of `r median(metadata$age, na.rm = T)` (range: `r sprintf("%s-%s", min(metadata$age, na.rm = T), max(metadata$age, na.rm = T))`, IQR = `r IQR(metadata$age, na.rm = T) %>% round(1)`). The age distribution appeared to be a bimodal distribution, which is rather typical for this kind of online study with a convenience sample. Fitting a Gaussian Mixture Model (using the `MClust` package for `R`) corroborated this visual impression. We found one age group with  participants up to 30 years (N = `r (table(metadata$age_group))["<=30"]`, `r (table(metadata$age_group) %>% prop.table() %>% round(3) %>% magrittr::multiply_by(100))["<=30"]`%), and another one with participants older than 30 years (N = `r table(metadata$age_group)[">30"]`,  `r (table(metadata$age_group) %>% prop.table() %>% round(3) %>% magrittr::multiply_by(100))[">30"]`%). 
 
-The participant were mainly highly educated, with a `r (table(metadata$higher_ed) %>% prop.table() %>% round(3) %>% magrittr::multiply_by(100))["TRUE"]`% having an university or college degree (bachelor, master, or PhD), and `r (table(metadata$at_least_a_level) %>% prop.table() %>% round(3) %>% magrittr::multiply_by(100))["TRUE"]`% having a school degree of A-levels ("Abitur"), with `r (table(metadata$job) %>% prop.table() %>% round(3) %>% magrittr::multiply_by(100))[["student"]]`% of the sample being students. This rather homegeneous group, unfortunately, prohibited further analysis with respect to education.
+The participant were mainly highly educated, with a `r (table(metadata$higher_ed) %>% prop.table() %>% round(3) %>% magrittr::multiply_by(100))["TRUE"]`% having an university or college degree (bachelor, master, or PhD), and `r (table(metadata$at_least_a_level) %>% prop.table() %>% round(3) %>% magrittr::multiply_by(100))["TRUE"]`% having a school degree of A-levels ("Abitur"), with `r (table(metadata$job) %>% prop.table() %>% round(3) %>% magrittr::multiply_by(100))[["student"]]`% of the sample being students. This rather homogeneous group prohibited deeper analyses with respect to education.
 
 
-## Preprocessing (Factor Analysis)
+## Preprocessing
 
-In order to reduce the number of variables and the complexity of the analysis, we first applied an exploratiry factor analysis to the rating scales, across all types and degrees of disliking. After inspecting the factor solution, it was clear that the factors did not fully represent single psychological constructs, but incorporated correlation between different such constructs, which we deemed to be a result. As using the original solution with impure factors  would have made the interpretation of results blurry, we decided to purify the orignal factors manually, by constructing a virtual dislike scale with a certain set of subscales. This led finally to a virtual Dislike scale with nine  subscales that have a clear interpretation. The definition of the subscales and the items can be found in Tab. 1. For a list of item names and item texts, see the supplementary information, as well as for a full correlation matrix of all single items. Subscale scores were calculated as the mean value of all involved items while using the R package `mice` for  imputing missing values.
+In order to reduce the number of variables and thus the complexity of the analysis, we first applied an exploratory factor analysis to the rating scales, across all four conditions. The resulted in an oblique factor solution with eight factors (explaining a total of 53% of variance, see Supplementary Material). After inspecting this factor solution, it became clear that the factors did not neatly represent distinct psychological constructs (or judgment strategies), but that different  constructs had been merge in to some of the factors due to strong correlations. As using these impure factors would have made the interpretation of results blurry,  we decided to "purify" the original factors manually by constructing a scale with a conceptually disentangled set of subscales. This led finally to a "virtual dislike scale" with nine subscales with a clearer semantic separation The definition of the subscales in terms of the original items can be found in Tab. 1. (A list of item names and item wording as well as  a full correlation matrix of all single items, can be found in the supplementary material). Subscale scores were calculated as the mean value of all involved items after using the `R` package `mice` for imputing missing values. The subscales were named **Too Niche**, **Too Complex**, **Too Emotional**, **Too Simple**, **Not Authentic**, **Too Mainstream**, **Social Incongruence**, **No Impact**, and **Displeasure**. The **Not Authentic** subscale consists of only one item, which is supoptimal for a subscale, but this choice is justified by its unique semantic position within all items. Authenticity is a very specific cultural concept, which cannot be grouped *a priori* with any of the other items in our view.  
 
-The scale distributions and correlation can be seen in the panel plot in Fig. 1. All scale  differ viusally from normality, which is no surprise. They show either strong (mostly left) skewness or bimodality. Onle Social Incongruence and No Impact are unimodal with a mode not at one extreme end of the scale. Two scales are rarely used, Too Complex and Too Emotional. The scale No Authentic shows a clearly bimodal, as artists and styles are typically considered authentic or not, there seems to be no strong middle ground for authenticity. 
+The scale distributions and correlation can be seen in the panel plot in Fig. 1. All scale differ viusally from normality, which was also the case for most original items. They show either strong (mostly left) skewness or  bimodality. Only **Social Incongruence** and **No Impact** are unimodal with a mode not at an extreme end of the scale. The two scales **Too Complex** and **Too Emotional** are rarely used. The scale **Not Authentic** shows a clearly bimodal distibrution, indicating that artists and styles are typically considered as either authentic or not; there does not seem to be a strong middle ground for authenticity in the view of the respondents. 
 
-```{r ds_scale,  echo = FALSE} 
+```{r ds_scale,  echo = FALSE, eval = TRUE} 
 flextable::flextable(scale_definition_from_keys()) %>% 
-  width(j = ~Subscale, width = 1.4) %>% 
-  width(j = ~`No. Items`, width = .75) %>% 
-  width(j = ~Items, width = 4.1) %>% 
-   set_caption("Definition of the virtual Dislike scale wiht subscales")
+  flextable::width(j = ~Subscale, width = 1.4) %>% 
+  flextable::width(j = ~`No. Items`, width = .75) %>% 
+  flextable::width(j = ~Items, width = 4.1) %>% 
+   set_caption("Definition of the virtual Dislike scale with subscales")
 ```
 
+As expected, the subscales show various strong correlations, which are basically all positive. Looking at the correlations with absolute value above *r > .4*, we find that the  subscale **Too Niche** is strongly correlated with **Displeasure** (*r = .46*), **Too Complex** (*.42*), and **No Impact** (*.42*). Being considered too nich is often connected with high complexity, but not completely so, as certain music seemingly can be considered as too complex but not as too niche. Music considered too niche can be either lead to displeasure or have no impact to listeners, which are general two, partly disjunct, form of disliked music (see below).
 
-The subscales show strong correlations as expected, with are basically only positive. Looking at the correlations with absolute value above .4, we find that the  subscale "Too Niche" is correlated with Displeasure (.46), Too Complex (.42), and No Impact (.42). The subscale "No Impact" is correlated with Too Simple (.47) and Not Authentic (.38).
-The subscale Not Authentic is correlated with Too Simple (.57) and Too Mainstream (.44). The subscale "Displeasure" shows the strongest correlation with Too Niche (.46 and Social Incongruence (.48). The subscale Too Complex correlates with Too Niche (.42) and Too Emotional (.38). Social Incongruence has the strongest overall correlation with all subscales. ranging from .13 to .53 for Too Simple, followed by .48 for Displeasure.  Too Mainstream is correlated with Too Simple (.56) and Not Authentic (.44). The subscale "Too Emotional" has no correlation over .4 but at least a correlation of .13 with all other subscales. 
+The subscale **No Impact**, in turn, is correlated with **Too Simple** (*.47*) and **Not Authentic** (*.38*). This indicates that perceived simplicity and missing authenticity can result in a lack of (emotional) impact.  
+
+The subscale **Not Authentic** is further correlated with **Too Simple** (*.57*) and **Too Mainstream** (*.44*). The latter is a general prejudice towards mainstream music (though maybe not all of them), but also of being **Not Authentic** moderated by a implicit allegation of mainstream being too commercial which is prohibitive of being authentic in the eye of our respondents.  
+
+The subscale **Displeasure** shows the strongest correlation with **Too Niche** (*.46*) and **Social Incongruence** (*.48*). The musical characteristics included in the *Too Niche* scale (too loud, too fast, too dissonant etc.) seem obviously to greater displeasure, which seem to carry over via a homology assumption also to  perceived social rejection or incongruence of the fan base of this music.  
+
+The subscale **Too Complex** correlates with **Too Niche** (*.42*) and **Too Emotional** (*.38*). **Too Complex** and **Too Emotional** are the two subscales which are applied the least often to disliked music, they can thus be regarded as independent "side aspects" of dislikes. It is most strongly applied to the styles *Blues*, *World*, and *Jazz*. Their strong correlation seem to be driven mainly by the fact, they are both rather rarely applied.
+
+**Social Incongruence** has the strongest overall correlation with all subscales, with values ranging from *.13* for **Too Complex** to *.53* for **Too Simple**, followed by .48 for **Displeasure**. This clearly indicates, that social aspects play a prominent and very general role in musical dislike and, probably in musical taste. in general.
+
+**Too Mainstream** is correlated with **Too Simple** (*.56*) and **Not Authentic** (*.44*), which is a classical "Adornoite" viewpoint towards popular music as mass culture in capitalism. As we will see below this is the most common justifcation strategy by the respondents in our sample.  
+
+The subscale **Too Emotional** has no correlation  *r > .4* but a minimum  correlation of *r > .13* with all other subscales. This shows again that this subscale represent a rare, but valid side aspect for disliking music, which is mostly applied to *Blues*, *Reggae*, and *Traditional* with respect to median value (but *Blues* and *Reggae* have very low overall style counts (10 and 45 across all conditions, so no strong inferences should be drawn from this).
 
 ```{r dS_scales_panel,  fig.height = 8, fig.width = 12, fig.cap = "Fig. 1. Panel plot of Dislike subscales", echo = FALSE}
 psych::pairs.panels(master %>% select(starts_with("DS")) %>% set_names(fashion_subscale_names(names(.))))
@@ -64,12 +72,24 @@ flextable::flextable( master %>% select(starts_with("DS")) %>%
   set_caption("Correlation between the Dislike subscales")
 ```
 
-The subscales can be further grouped into "descriptions"  and "consequences". The later group comprise No Impact and Displeasure. Either the music has no effect or causes displeasure, both are reasons to dislike measure, which implies that people expect impact from music, and if this impact is not provided then it is a reason to dislike it (though in many cases it might cause indifference, but because the participant were asked to name diskliked music, we cannot make any statements about this from our data.) Interestingly, the correlation between these two scales is weak (r = .18) but significant, indicating some  contradictory assessments by the paricipants. The descriptive subscales can be further divided in descriptors of musical content (Too Niche, Too Complex, Too Simple, Too Emotional) and of social aspects (Too Mainstream, Not Authentic, Social Incongruence). 
+The subscales can be  grouped into "descriptions" and "consequences". The latter group comprises the subscales **No Impact** and **Displeasure**. Either the music has no effect or causes displeasure, and both are (conceptually disjunct) reasons to dislike music. This also implies that people expect impact from music, and when this impact is not provided by music then it is a reason for disapproval (though in most cases, lack of impact might, in fact, cause indifference, but because the participants in our study were asked for disliked music, we cannot make any statements about this from our data). Interestingly, there is a weak but significant correlation between these two scales (*r = .18*), indicating either some contradictory assessments by the participants or a dissocation of aesthetic emotions (displeasure) from evoked emotions (impact).
 
-Because of the semantic structure, some cautious causal statements are  possible, as consequences of music cannot cause the structure of music (though it could cause partly the perception of structure) the same holds for the perceived Social Incongruence between the fans of this music (even though people might believe in an implicit  homology between musical characteristics and social and personal characteristics of its fans.) For instance, the strong correlations between Too Simple and Not Authentic, Too Mainstream, Social Incongruence and No Impact, but less so with Displeasure evokes the imagination of a too simple music that is because of this in the mainstream, which means the mainstream listener of this music is also socially rejected. This is a classical highborw or even snobbish attitude. But the disliked music does no produced bad moods or feelings, it is merely indifferent. Too Niche on the contrary shows the strongest correlation wiht Displeasure, which means the "deviant" music characteristics of this music can produce bad feelings. But the correlation with Social Incongruence is only r = .32 in this case, so this leads to weaker rejection of the fan base of niche music. This could be called a lowbrow attitude. Niche music is too weird to be enjoyed, it even creates bad feelings, but the music and its listeners are  still somewhat "respected". 
+The descriptive subscales can be further divided in descriptors of musical content (**Too Niche**, **Too Complex**, **Too Simple**, **Too Emotional**) and of social aspects (**Too Mainstream**, **Not Authentic**, **Social Incongruence**). 
+
+Because of this specific semantic structure, some cautious causal statements are possible, as consequences of music cannot "cause" the structure of music (though it could partly influence the perception or judgment of musical properties). The same holds for the perceived **Social Incongruence** between oneself and the fans of this music (even though people might believe in an implicit  homology between musical and social/personal characteristics of its fans). For instance, the strong correlations between **Too Simple** and **Not Authentic**, **Too Mainstream**, **Social Incongruence** and **No Impact**, but less so with **Displeasure**, evokes the imagination of a too simple music that is because of its simplicity in the mainstream, which caters to a likewise "simple", unenlightend mainstream audience,  which are thus also socially rejected. This is an classical Adornoite or highbrow or even snobbish attitude. But disliked music of this kind does no lead to  bad moods or feelings, it is merely indifferent for the highbrow listener (and sometime secretely enjoyed under a guilty pleasure label). 
+
+Music judeged as **Too Niche**, on the other hand, shows the strongest correlation with **Displeasure**, which means the sepcific musical characteristics of this music can produce indeed bad moods and unpleasant feelings. But the correlation of **Too Niche** with **Social Incongruence** is only *r = .32*, so it leads to a weaker rejection of the fan base of niche music. This could be called a "lowbrow" attitude. Niche music is simply too weird to be enjoyed, in this view, and often creates bad feelings, but the music and its listeners are still somewhat "respected". 
 
 ```{r lpa_dist, echo=FALSE, message=FALSE, warning=FALSE, eval = TRUE}
-lpa_stats <- master %>% distinct(p_id, type, degree, lpa_class) %>% count(type, degree, lpa_class) %>% pivot_wider(id_cols = c(type, degree), names_from = lpa_class, values_from = n) %>% mutate(f_lowbrow = round(100*lowbrow/(lowbrow  + highbrow), 1), f_highbrow = round(100*highbrow/(lowbrow  + highbrow), 1), cases = lowbrow + highbrow) %>% select(type, degree, cases, everything()) %>% set_names(c("Type", "Degree", "Cases", "No. Lowbrow", "No. Highbrow", "Lowbrow (%)", "Highbrow (%)"))
+lpa_stats <- master %>% 
+  distinct(p_id, type, degree, lpa_class) %>% 
+  count(type, degree, lpa_class) %>%
+  pivot_wider(id_cols = c(type, degree), names_from = lpa_class, values_from = n) %>% 
+  mutate(f_lowbrow = round(100*lowbrow/(lowbrow  + highbrow), 1), 
+         f_highbrow = round(100*highbrow/(lowbrow  + highbrow), 1), 
+         cases = lowbrow + highbrow) %>% 
+  select(type, degree, cases, everything()) %>% 
+  set_names(c("Type", "Degree", "Cases", "No. Lowbrow", "No. Highbrow", "Lowbrow (%)", "Highbrow (%)"))
 
 flextable::flextable( lpa_stats, 
                       cwidth = .75, cheight = .25 )%>% 
@@ -77,30 +97,43 @@ flextable::flextable( lpa_stats,
   fontsize(size = 8, part = "header") %>% 
   set_caption("Latent Profile Classes by type and degree")
 
-total_lpa <- master %>% distinct(p_id, total_lpa_class) %>% count(total_lpa_class)%>% mutate(total = sum(.[["n"]])) %>% mutate(rel = round(100*n/total, 1)) %>%  select(-total) %>%  mutate(total_lpa_class = fashion_subscale_names(total_lpa_class)) %>% set_names(c("Total LPA class", "N", "Percentage (%)")) 
-
 ```
 
 ## Laten Profile Analysis
 
-This observation which is in line with results from previous research on musical taste led as to look for latent profiles in the rating behaviours. In order to do so, we used the  R package tidyLPA to extract two latent profiles for each of the four conditions (artist/style, strong/slight). Two profiles are not the optimal solution according to standard model estimators, but it the most simple solution with provided the most balanced group sizes and has  the easiest interpretation.  An overview statistics of Highbrow and Lowbrow profiles can be found in Tab. 3. Mean values of the Dislike subscales in Tab. 3. The Highbrow profile is generally more frequent, about 60-70% in the four conditions. Interestingly, not all  participant belong to the same LPA class across the four conditions. We defined a total LPA class by investigating the profile statistics of each participant, defining five classes "lowbrow", "mainly lowbrow", "mixed", "mainly highbrow" and "highbrow". The extreme classes are assigned if a participant uses the same profile in all conditions, the mainly highbrow/lowbrow classes are used when the majority but all not profiles are present and mixed is reserved for participant with an equal split of Lowbrow and Highbrow profiles. The distribution can be seen in Tab. 3. Highrow and Mainly Highbrow profiles are prevalent, only 14% of all participants did not show at least one Highbrow profile. Taken together, this might be indicative of our generally well-educated sample.
-
-
+The latter observation, which is pretty much in line with results from previous research on musical taste, led as to look for latent profiles in the rating behaviours. To this end, we used the  `R` package `tidyLPA` to extract two latent profiles for each of the four conditions (Artist/Style, Strong/Slight). Two profiles are not the optimal solution according to standard model estimators (AIC, BIC), but it is the most simple solution which produced the most balanced group sizes and also has the easiest interpretation. An overview statistics of **Highbrow** and **Lowbrow** profiles can be found in Tab. 2. Mean values of the Dislike subscales can be seen in Fig. 2. 
 
 ```{r total_lpa_dist, echo=FALSE, message=FALSE, warning=FALSE, eval = TRUE}
-total_lpa_stats <- master %>% distinct(p_id, total_lpa_class) %>% count(total_lpa_class)%>% mutate(total = sum(.[["n"]])) %>% mutate(rel = round(100*n/total, 1)) %>%  select(-total) %>%  mutate(total_lpa_class = fashion_subscale_names(total_lpa_class)) %>% set_names(c("Overall LPA class", "N", "Percentage (%)")) 
+total_lpa_stats <- master %>% 
+  distinct(p_id, total_lpa_class) %>% 
+  count(total_lpa_class)%>% 
+  mutate(total = sum(.[["n"]])) %>% 
+  mutate(rel = round(100*n/total, 1)) %>%  
+  select(-total) %>%  
+  mutate(total_lpa_class = fashion_subscale_names(total_lpa_class)) %>% 
+  set_names(c("Overall LPA class", "N", "Percentage (%)")) 
 
 flextable::flextable( total_lpa_stats, 
                       cwidth = .75, cheight = .25 )%>% 
   fontsize(i = NULL, j = NULL, size = 8, part = "body") %>% 
   fontsize(size = 8, part = "header") %>% 
-  set_caption("Overall Latent Profile Classeses of participants")
+  set_caption("Overall Latent Profile Classes of participants")
 
 
 ```
 
-```{r lpa_means, echo=FALSE, message=FALSE, warning=FALSE, eval = TRUE}
-class_means <- master %>% select(starts_with("DS"), type, degree, lpa_class) %>% pivot_longer(-c(type, degree, lpa_class))  %>% group_by(type, degree, lpa_class, name) %>% summarise(m = round(mean(value),2)) %>% pivot_wider(id_cols = c(type, degree, lpa_class), names_from = name, values_from = m)
+The **Highbrow** profile is generally more frequent, they account for about 60-70% in the four conditions. Interestingly, not all participant belong to the same LPA class across the four conditions. We defined a total LPA class by investigating the profile statistics of each participant, defining five classes "lowbrow", "mainly lowbrow", "mixed", "mainly highbrow", and "highbrow". The extreme classes are assigned if a participant uses the same profile in all conditions, the mainly highbrow/lowbrow classes are used when the majority but all not profiles are present, and the mixed class is applied to participant with an equal split of **Lowbrow** and **Highbrow** profiles. The distribution can be seen in Tab. 3. Highbrow and Mainly Highbrow profiles are prevalent, only 14% of all participants did not show at least one Highbrow profile. This might be due to our overall well-educated sample.
+
+```{r lpa_means, echo=FALSE, message=FALSE, warning=FALSE, eval = FALSE}
+class_means <- master %>% 
+  select(starts_with("DS"), type, degree, lpa_class) %>% 
+  pivot_longer(-c(type, degree, lpa_class))  %>% 
+  group_by(type, degree, lpa_class, name) %>% 
+  summarise(m = round(mean(value),2), .groups = "drop") %>% 
+  pivot_wider(id_cols = c(type, degree, lpa_class), 
+              names_from = name, 
+              values_from = m)
+
 flextable::flextable( class_means %>% 
                         set_names(fashion_subscale_names(names(.))), 
                       cwidth = .6, cheight = .2 )%>% 
@@ -109,36 +142,68 @@ flextable::flextable( class_means %>%
   set_caption("Subscale means by type, degree and assigned LPA class (value range 1-5)")
 ```
 
+```{r lpa_means_plot, echo=FALSE, message=FALSE, warning=FALSE, eval = TRUE, fig.width = 12, fig.height = 8, fig.cap = "Fig. 2. Latent Profile Class means by conditions. Errorbars represent standard errors."}
+master %>% 
+  select(starts_with("DS"), type, degree, lpa_class) %>% 
+  pivot_longer(-c(type, degree, lpa_class)) %>% 
+  group_by(type, degree, lpa_class, name) %>% 
+  summarise(m = mean(value), s = se(value), .groups = "drop") %>% 
+  ungroup() %>%
+  mutate(name = fashion_subscale_names(name))  %>% 
+  ggplot(aes(x = name, y = m, color = lpa_class)) + geom_point() + geom_errorbar(aes(ymin = m - s, ymax = m + s), width= .5) + geom_line(aes(group = lpa_class)) + facet_grid(type ~degree) + coord_flip() + theme_bw() + scale_color_manual(values = c("black", "red"), name = "LPA Class") + labs(x = "Subscale", y = "Mean value")
+```
 
+## Differences in style selections
 
-## Difference between Style/Artist and Strong/Slight degrees of disliking
+Next, we analysed the dsibtrution of styles and their assessment. In the two Style conditions, participants had to explicitly select disliked styles from the list of 15 styles. In the two Artist conditions, participants were also asked to provide a style descriptor for the chosen artist, even though sometimes there were not able to do so (`r master %>% filter(type == "artist", style == "NA") %>% nrow()` out of `r master %>% filter(type == "artist") %>% nrow()`). The distribution of styles was rather inbalanced, see Tab. 4. The top disliked styles were *Schlager*, *Traditional* and *HipHop*. *Schlager* occurs about twice as often as the next styles, either *HipHop* or *Tradtional*, which highlights the special role *Schlager* plays in the German music culture.
 
-
-## Style analysis
-
-Next, we analysed the styles and their ratings. In the two style conditions participants had to explicitly select dislied styles from the list of 15 styles. In the artist conditions, participants were also asked to provide a style descriptor for the chosen artist, even though sometimes there were not able to do so (`r master %>% filter(type == "artist", style == "NA") %>% nrow()` out of `r master %>% filter(type == "artist") %>% nrow()`). The distribution of styles was rather inbalanced, see Tab. 5. The top disliked styles were Schlager, Traditional and HipHop. Schlager occur about twice as often as the next either HipHop and Tradtional, which show the special role Schlager plays in the German music culture.
-
-There are clear differences between the Artist and Style conditions. In the Artist condition there were much more mentions of HipHop, Pop and Rock artists than in the Style conditions, whereas the opposite was true for Traditional, Metal, Techno, Country. This can be explained by the fact, that Pop, HipHop and Rock as very broad or prominent styles are thus not generally disliked, whereas single artists from these styles can specificially disliked. It also more likely that people actually know artists from these style due to the higher popularity, whereas for more generally disliked styles such as Metal, Techno, and Traditional people are less likely to know names of specific artist names (simply because it is a disliked style that is not overly present in public media).     
+There are clear differences between the Artist and Style conditions. In the Artist condition, there were much more mentions of *HipHop*, *Pop*, and *Rock* artists than in the Style conditions, whereas the opposite was true for *Traditional*, *Metal*, *Techno*, and *Country*. This can be explained by the fact, that *Pop*, *HipHop*, and *Rock* are very broad and prominent styles that seldom generally disliked in its totality, whereas single artists from these styles can easily draw very negative judgments. It also more likely that people actually know artists from these style due to the higher popularity, whereas for more generally disliked styles such as *Metal*, *Techno*, and *Traditional* people are less likely to know names of specific artist, simply because these are (1) disliked styles and (2) that they are not (anymore) strongly present in public media, or operate generally without a prominent star system such as *Techno*.     
 
 ```{r style_stats, echo=FALSE, message=FALSE, warning=FALSE, eval = TRUE}
-style_stats <- master %>% freq2_table(type, style) %>% mutate(freq = round(100*freq, 1)) %>% arrange(type, desc(freq)) %>% pivot_wider(id_cols = style, values_from = c(n, freq), names_from = type, values_fill = 0) %>% mutate(total = n_artist + n_style) %>% arrange(desc(total)) %>% set_names(c("Style", "Count (Artist)", "Count (Style)", "Perc. (Artist, %)", "Perc. (Style, %)", "Count"))
+style_stats <- master %>% 
+  freq2_table(type, style) %>% 
+  mutate(freq = round(100*freq, 1)) %>% 
+  arrange(type, desc(freq)) %>%
+  pivot_wider(id_cols = style, 
+              values_from = c(n, freq), 
+              names_from = type, 
+              values_fill = 0) %>% 
+  mutate(total = n_artist + n_style) %>% 
+  arrange(desc(total)) %>% 
+  set_names(c("Style", "Count (Artist)", "Count (Style)", "Perc. (Artist, %)", "Perc. (Style, %)", "Count"))
+
 flextable::flextable( style_stats , 
                       cwidth = .75, cheight = .2 )%>% 
   fontsize(i = NULL, j = NULL, size = 8, part = "body") %>% 
   fontsize(size = 8, part = "header") %>% 
-  set_caption("Style counts and percentages by main condition (style or artist)")
+  set_caption("Style counts and percentages by main condition (Style and Artist)")
 ```
 
-Style diversity was rather high though, `r master %>% group_by(p_id) %>% summarise(style_diversity = n_distinct(style)/(n())) %>% freq_table(style_diversity) %>% filter(style_diversity == 1) %>% mutate(freq = round(100*freq, 1)) %>% pull(freq)`% selected all different styles in all conditions (or only took part in one condition), whereas nobody used only one style.
+Style diversity was rather high, `r master %>% group_by(p_id) %>% summarise(style_diversity = n_distinct(style)/(n()), .groups = "drop") %>% freq_table(style_diversity) %>% filter(style_diversity == 1) %>% mutate(freq = round(100*freq, 1)) %>% pull(freq)`% selected all different styles in all conditions (or only took part in one condition), whereas nobody mentioned only one style.
 
-We further checked for differences in style distributions with respect to the demogpraphic variables age group and gender (without diverse) as well as for assigned  LPA class. Results of the Chi-Squared-Tests can be found in Tab. 5. There are strong differences for Age Group and LPA class in all four conditions, but only one for Gender in the Style/Strong condition.
+To check whether the style distibributions were different in the different conditions and degrees of dislike, we used a bootstrap Chi-squared test (with 100 samples) to alleviate the repeated measurement problem. This became highly significant (all *p < .001*, mean *Cramers V = .365*) with a strong effect. The same held true for comparing Style vs. Artist conditions (all *p < .001*, mean *Cramer's V = .502*) and also for Strong vs. Slight degrees (all *p < .001*, mean *Cramer's V = .282*).
+
+The main differences in the Strong/Slight subconditions is that *Pop*, *Country*, and *Reggae* artists were chosen more frequently in the Slight conditions, whereas *Metal*, *Schlager*, and *Traditional* occurred more often in the Strong conditions.  
+
+```{r style_diff_condition, echo = FALSE, fig.width = 12, fig.height = 8, fig.cap = "Fig. 3. Chi-Square Residuals of Styles by the four conditions."}
+table(master %>% 
+        mutate(full_type = fashion_subscale_names(full_type) %>% str_replace(" ", " / ")) %>% 
+        pull(full_type), 
+      master$style) %>% 
+  vcd::assoc()
+```
+
+We further checked for differences in style distributions with respect to the demographic variables **Age Group** and **Gender** (dropping the "diverse" gender group) as well as for assigned **LPA Class**. Results of the Chi-Squared tests can be found in Tab. 5. There are strong differences for **Age Group** and **LPA Class** in all four conditions, but only one for **Gender** (in the Style/Strong condition). Chi-Squared residual plots of styles for the Style/Strong conditions according to the demographic variables can be found in Fig. 4a, b and c, from which some noteworthy observations can be made. 
 
 ```{r style_diffs,  echo = FALSE}
-style_diffs <- map_dfr(c("age_group", "gender", "lpa_class"), function(g) get_chisq_stats(master, g, "style")) %>% mutate(p_value_adj = round(p_value_adj, 3)) %>% 
+style_diffs <- map_dfr(c("age_group", "gender", "lpa_class"), 
+                       function(g) get_chisq_stats(master, g, "style")) %>% 
+  mutate(p_value_adj = round(p_value_adj, 3)) %>% 
   select(-p_value) %>% 
   mutate(p_value_adj = sprintf("%.3f%s", p_value_adj, sig)) %>% 
   select(-sig, -target) %>% 
-  mutate(statistic = round(statistic, 1), cramers_v = round(cramers_v, 2))  %>% set_names(fashion_subscale_names(names(.)))
+  mutate(statistic = round(statistic, 1), cramers_v = round(cramers_v, 2))  %>%
+  set_names(fashion_subscale_names(names(.)))
 
 flextable::flextable( style_diffs , 
                       cwidth = .75, cheight = .2 )%>% 
@@ -147,10 +212,57 @@ flextable::flextable( style_diffs ,
   set_caption("Chi-Square tests of differences in style distribution for condition by age group, gender (with diverse), and LPA class. All p-values Bonferroni adjusted.")
 ```
 
-```{r mean_value_plot_artist,  fig.height = 8, fig.width = 12, echo = FALSE}
-mean_value_plot(master, weighted = F, type = "artist")
+
+With respect to **Age Group**, the younger (less than 30 years) group clearly more dislikes *Schlager*, *Metal*, and *Pop*, whereas the elder group more dislikes *Traditional*, *Jazz*, *Country*, and *Techno*. On the other hand, the elder age group are more open to *Schlager*, *Metal*, and *Pop*, whereas the younger group has fewer reservations against *Traditional*, *Techno*, and *Jazz*.   
+
+```{r chisqres_age_group,  fig.height = 6, fig.width = 9, warning = FALSE, echo = FALSE, fig.cap = "Fig. 4a. Chi-Squared Residuals for styles in  Style/Strong conditions for Age Group"}
+get_prop_table(master, group = "age_group", output_format = "plot")
 ```
 
-```{r mean_value_plot_artist_weighted, fig.height = 8, fig.width = 12, echo = FALSE}
-mean_value_plot(master, weighted = T, type = "artist")
+There are some stereotypes to be corroborated in the style preferences of males and females. Males dislike more strongly and often *Schlager*, *Pop*, *HipHop*, and *EDM*, but are more fond of *Jazz*, *Metal*,  *Techno*, and also *House*. The female respondents show the clear opposite: more dislikes for styles traditionally often regarded as "virile", such as *Jazz* and *Metal* as well as *Techno*, and fewer reservations against *Schlager*, *EDM*, *HipHop*, and *Pop*.
+
+```{r chisqres_gender,  fig.height = 6, fig.width = 9, warning = FALSE, echo = FALSE, fig.cap = "Fig. 4b. Chi-Squared Residuals for styles in  Style/Strong conditions for Gender"}
+get_prop_table(master, group = "gender", output_format = "plot")
+```
+
+Finally, the differences for **LPA Class** justify their denomination as *Highbrow* and *Lowbrow* reasoning styles. **Highbrows** have more dislikes for *Schlager*, *Traditional*, *EDM*, and *Pop*, whereas *Lowbrow* profiles more strongly dislike *Jazz*, *Metal*, and *Techno*.
+
+```{r chisqres_lpa_class,  fig.height = 6, fig.width = 9, warning = FALSE, echo = FALSE, fig.cap = "Fig. 4c. Chi-Squared Residuals for styles in  Style/Strong conditions for LPA classes"}
+get_prop_table(master, group = "lpa_class", output_format = "plot")
+```
+
+## Rating differences between styles by condition 
+Besides the clearly different distributions of styles in all conditions and demographics, we were also interested in difference in ratings in the Slight and Strong subconditions. As the distribution of styles was rather different in the Style vs. Artist main conditions (cf. Tab. 4), we treated both cases separately and stratified also for styles. Furthermore, as the style distribution are very skewed and the Dislike subscales clearly differ from normality, we used an permutation test (``independence_test`` from the ``coin`` package for ``R``) as an omnibus test and then resorted to a battery of Kruskal-Wallis tests to check for differences in the Strong and Slight subconditions on all subscales while using Holm adjustment of p-values to account for multiple testing. The results can be found in Tab. 6, where only significant differences at the 5% level are shown (in the Artist condition the cases with no assigned style are omitted, for a complete table please refer to the supplementary material). Both omnibus tests resulted in highly significant differences (*p < .001*). A graphical display of mean values and 95% confidence intervals can be seen in Fig. 5 and 6. 
+
+
+```{r ks_tests,  fig.height = 8, fig.width = 12, echo = FALSE}
+
+ks_artist <- get_mean_differences(master %>% filter(type == "artist"), group_var = "degree", target_var = "style", names(master)[str_detect(names(master), "DS")]) %>%  filter(p_adj < .05, target != "NA") %>% mutate(type = "Artist") 
+
+ks_style <- get_mean_differences(master %>% filter(type == "style"), group_var = "degree", target_var = "style", names(master)[str_detect(names(master), "DS")]) %>%  filter(p_adj < .05) %>% mutate(type = "Style")
+
+ks_tab <- bind_rows(ks_style, ks_artist) %>% 
+  select(type, target, DS = var, -grouping, d, statistic, N_slight, N_strong, p_adj) %>%
+  mutate(DS = fashion_subscale_names(DS),
+         d = -d,
+         p_adj = sprintf("%.3f%s", p_adj, sig = get_sig_stars(p_adj)), 
+         across(where(is.numeric), round, 3)) %>% 
+  arrange(type, DS, target, desc(d)) %>% 
+  set_names(c("Condition","Style",  "Dislike Subscale", "d (Strong - Slight)", "Statistic", "N (slight)", "N (strong)", "p (adj)")) 
+flextable::flextable( ks_tab , 
+                      cwidth = .75, cheight = .2 )%>% 
+  fontsize(i = NULL, j = NULL, size = 8, part = "body") %>% 
+  fontsize(size = 8, part = "header") %>% 
+  set_caption("Significant  differences in style ratings on the Dislike subscales. Last column, p-values are Holm adjusted.")
+```
+
+The main differences are, expectedly, to be found on the subscale **Displeasure**, where values in the Strong subcondition are higher than in the Slight subcondition, with overall larger differences in the Artist main condition. Other differences pertain to **Social Incongruence** (Artist: *Pop* and *Rock*, Style: *Schlager*) and **Not Authentic** (Artist: *Pop* and *Schlager*). All in all, the main differences between the two main and two subconditions lie mostly in the selection of styles as well as in the higher **Displeasure** ratings in the Strong vs. the Slight conditions.
+
+
+```{r mean_value_plot_style,  fig.height = 8, fig.width = 12, echo = FALSE, fig.cap = "Fig. 5. Mean value of style ratings in the Style main conditions for the Strong/Slight subconditions. Error bars are 95% CI, dot size is proportional to total count of style."}
+mean_value_plot(master %>% filter(style != "NA"), weighted = F, type = "style")
+```
+
+```{r mean_value_plot_artist, fig.height = 8, fig.width = 12, echo = FALSE, fig.cap = "Fig. 6. Mean value of style ratings in the Artist main conditions for the Strong/Slight subconditions. Error bars are 95% CI, dot size is proportional to total count of style."}
+mean_value_plot(master, weighted = F, type = "artist")
 ```

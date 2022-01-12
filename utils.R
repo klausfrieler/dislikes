@@ -9,6 +9,10 @@ freq_table <- function(x, prop_var) {
   #tmp %>% ggplot(aes_string(x = rlang::quo_text(prop_var), y= "freq")) + geom_col()
 }
 
+se <- function(x){
+  sd(x)/sqrt(length(x))
+}
+
 freq2_table <- function(x, group_var, prop_var) {
   group_var <- enquo(group_var)
   prop_var  <- enquo(prop_var)
@@ -159,4 +163,42 @@ get_efa <- function(data,
     psych::fa(tmp, n_factors, rotate = rotate)
     
   }
+}
+tidy_wilcox_test <- function(x, y){
+  d <<- NA
+  wt <<- tibble(statistic = NA, p.value = NA, method = NA, alternative = NA)
+  tryCatch({
+    d <- mean(x, na.rm = T) - mean(y, na.rm = T)
+    wt <- suppressWarnings(wilcox.test(x, y)) %>% broom::tidy()
+    }, 
+    error = function(x){
+      })
+  wt %>% mutate(d = d) %>% select(d, statistic, p.value)
+}
+
+get_mean_differences <- function(data, group_var, target_var, vars, fn = mean, name_prefix = "", scale = F){
+  groups <- unique(data[[group_var]])
+  if(length(groups) > 2){
+    stop("Only for two groups")
+  }
+  if(scale)data <- data %>% mutate(across(all_of(vars), ~{scale(.x) %>% as.vector()}))
+  map_dfr(unique(data[[target_var]]), function(tv){
+    map_dfr(vars, function(v){
+      v1 <- data %>% filter(!!sym(group_var) == groups[1], !!sym(target_var) == tv) %>% pull(v)
+      v2 <- data %>% filter(!!sym(group_var) == groups[2], !!sym(target_var) == tv) %>% pull(v)
+      #browser()
+      
+      d_v <- fn(v1, na.rm =T) - fn(v2, na.rm = T)
+      new_name <- sprintf("%s%s", name_prefix, v)
+      tidy_wilcox_test(v1, v2) %>% mutate(var = v, target = tv, N1 = length(v1), N2 = length(v2)) %>% 
+        set_names(names(.) %>% 
+                    str_replace_all("N1", sprintf("N_%s", groups[[1]])) %>% 
+                    str_replace_all("N2", sprintf("N_%s", groups[[2]]))
+      )
+    })  
+    
+  }) %>% 
+    mutate(grouping = sprintf("%s-%s", groups[1], groups[2])) %>% 
+    mutate(p_adj = p.adjust(p.value)) %>% 
+    select(target, var, grouping, everything())
 }

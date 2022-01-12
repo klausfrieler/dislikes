@@ -18,7 +18,10 @@ mean_value_plot <- function(data, type = "style", max_val = 7, weighted = F, sca
     pivot_longer(-c(style, norm_style_count, type, degree)) 
   data <- data %>%   
     group_by(style, type, degree, name, norm_style_count) %>% 
-    summarise(m = mean(value), w_m = mean(value * norm_style_count), .groups = "drop") %>% 
+    summarise(m = mean(value), 
+              w_m = mean(value * norm_style_count), 
+              s = se(value), 
+              w_s = se(value * norm_style_count), .groups = "drop") %>% 
     mutate(g = degree) %>% 
     mutate(name = str_remove(name, "^DS_") %>% 
              str_replace_all("_", " ") %>% 
@@ -32,7 +35,7 @@ mean_value_plot <- function(data, type = "style", max_val = 7, weighted = F, sca
   }
   x_label <- "Mean"
   if(weighted){
-    data <- data %>% mutate(m = w_m) 
+    data <- data %>% mutate(m = w_m, s = w_s) 
     x_label <- "Weighted Mean"
   }
   q <- data %>% ggplot(aes(x = style, 
@@ -42,6 +45,7 @@ mean_value_plot <- function(data, type = "style", max_val = 7, weighted = F, sca
                            #shape = g
                            )) 
   q <- q + geom_point(aes(size = (norm_style_count)^2))
+  q <- q + geom_errorbar(aes(ymin = m - 1.96*s, ymax = m + 1.96*s), width = .5)
   q <- q + facet_wrap( ~ name) 
   q <- q + geom_line(aes(group = g)) 
   q <- q + geom_hline(aes(yintercept = y_intercept))  

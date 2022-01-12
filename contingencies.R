@@ -1,4 +1,12 @@
 tidy_assoc_stats <- function(as){
+  if(class(as) != "assocstats"){
+    tryCatch({
+      as <- vcd::assocstats(as)
+    }, 
+    error = function(e){
+      browser()
+      })  
+    }
   as$chisq_tests %>% 
     as_tibble() %>% 
     set_names(c("statistic", "df", "p_value")) %>% 
@@ -166,4 +174,18 @@ get_chisq_stats <- function(data, group_var, target_var){
     mutate(p_value_adj = p.adjust(p_value),
            sig = get_sig_stars(p_value_adj))
 
+}
+
+bootstrap_chisq <- function(data, cond_var, var, size = 1000){
+  conditions <- unique(data[[cond_var]])
+  data <- data %>% select(all_of(c(cond_var, var)))
+  map_dfr(1:size, function(x){
+    bs <- 
+      map_dfr(conditions, function(cond){
+        data %>% 
+          filter(!!sym(cond_var) == cond) %>% 
+          mutate(!!sym(var) := sample(!!sym(var), nrow(.), replace = T))
+      })
+    table(bs[[cond_var]], bs[[var]]) %>% tidy_assoc_stats()
+  })  
 }
