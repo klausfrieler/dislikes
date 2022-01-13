@@ -7,6 +7,7 @@ source("super_heatmap.R")
 source("utils.R")
 source("plot_utils.R")
 source("contingencies.R")
+source("correlations.R")
 
 messagef <- function(...) message(sprintf(...))
 printf <- function(...) print(sprintf(...))

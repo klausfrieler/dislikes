@@ -178,3 +178,27 @@ analyse_efa <- function(data, efa, prefix = "TC"){
     select(new_factor, term, corr, rank)  
   factor_map
 }
+
+
+simulate_degenerate_vars <-function(x, y, range = 1:5, low = 1:2){
+  #browser()
+  x[is.na(x)] <- median(x, na.rm = T)
+  y[is.na(y)] <- median(y, na.rm = T)
+  x.low_end <-  x[x <= max(low)]
+  x.high_end <- x[x > max(low)]
+  y.low_end <-  y[y <= max(low)]
+  y.high_end <- y[y > max(low)]
+  #browser()
+  print(tibble(x = x, y = y) %>% correlation::correlation())
+  print(tibble(x = x, y = y) %>% filter(x <= max(low), y <= max(low)) %>% correlation::correlation())
+  print(tibble(x = x, y = y) %>% filter(x > max(low), y > max(low)) %>% correlation::correlation())
+  x_low_sim <- sample(unique(x.low_end), size = length(x.low_end), prob = prop.table(table(c(y.low_end))), replace = T)
+  x_high_sim <- sample(x.high_end, length(x.high_end), replace = T)
+  y_low_sim <- sample(unique(y.low_end), size = length(y.low_end), prob = prop.table(table(c(x.low_end))), replace = T)
+  y_high_sim <- sample(y.high_end, length(y.high_end), replace = T)
+  ret <- list(x = c(x_low_sim, x_high_sim), y = c(y_low_sim, y_high_sim))
+  #browser()
+  orig_ct <- cor(x, y)
+  sim_ct <- cor(ret$x, ret$y)
+  list(orig_ct = orig_ct, sim_ct = sim_ct)
+}

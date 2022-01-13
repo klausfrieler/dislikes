@@ -89,7 +89,7 @@ comp_cor_mat_entries <- function(data){
 #     group_by(lpa_class, name) %>% summarise(m = mean(value))
 # }
 fashion_subscale_names <- function(subscale_names){
-  str_remove(subscale_names, "^DS_") %>% 
+  str_remove_all(subscale_names, "DS_") %>% 
     str_replace_all("_", " ") %>% 
     str_to_title()
 }
