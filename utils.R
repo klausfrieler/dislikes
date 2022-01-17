@@ -1,3 +1,7 @@
+to_perc <- function(x){
+  round(100 * x, 1)
+}
+
 freq_table <- function(x, prop_var) {
   prop_var  <- enquo(prop_var)
   tmp <- x %>% 
@@ -90,6 +94,7 @@ comp_cor_mat_entries <- function(data){
 # }
 fashion_subscale_names <- function(subscale_names){
   str_remove_all(subscale_names, "DS_") %>% 
+    str_remove_all("PC_") %>% 
     str_replace_all("_", " ") %>% 
     str_to_title()
 }

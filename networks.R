@@ -136,11 +136,11 @@ get_stable_cor_network2 <- function(data,
   sn
 }
 
-get_stable_cor_network <- function(data, directed = TRUE){
+get_stable_cor_network <- function(data, directed = TRUE, prefix = "DS"){
   #seed <- sample(1:1000,1)
   #printf("Seed = %d", seed)
   set.seed(872)
-  top_cor <- get_top_cors(data)
+  top_cor <- get_top_cors(data, prefix = prefix)
   
   cor_data <- top_cor %>% 
     group_by(var1, var2, cor_id) %>% 

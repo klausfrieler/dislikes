@@ -42,19 +42,29 @@ get_manova <- function(data,
   ret
 }
 
-get_independence_test <- function(data, type = "style",
+get_independence_test <- function(data, 
+                                  type = "style",
+                                  degree = "strong",
                                   var_names = "DS_", 
                                   predictors = c("style | degree"),
                                   nresample = 1000){
   vars <- data %>% select(contains(var_names)) %>% names()
   cit_form <- sprintf("%s ~ %s", paste(vars, collapse = " + "), predictors) %>% as.formula()
-  data <- data %>% mutate(across(where(is.character), as.factor)) %>% filter(type == !!type)
+  if(nchar(type) > 0){
+    data <- data %>% mutate(across(where(is.character), as.factor)) %>% filter(type == !!type)
+  }
+  if(nchar(degree) > 0){
+    data <- data %>% mutate(across(where(is.character), as.factor)) %>% filter(degree == !!degree)
+    
+  }
   cit <- coin::independence_test( cit_form, 
                                   distribution = coin::approximate(nresample = nresample), 
                                   teststat = "maximum", 
                                   data = data) 
   list(cit = cit, 
+       model = as.character(cit_form),
        type = type,
+       degree = degree,
        vars = vars,
        predictors = predictors,
        pval_global = coin::pvalue(cit), 

@@ -68,7 +68,6 @@ get_prop_table <- function(data,
   prop_tab_1 <- tab %>% prop.table(1) %>% round(2)
   prop_tab_2 <- tab %>% prop.table(2) %>% round(2)
   metadata <- tibble(type = type, degree = degree, group  = orig_group, target_var = orig_target_var)
-  #browser()
   if(output_format == "list"){
     list(metadata = metadata,
          tab = tab, 
@@ -189,3 +188,151 @@ bootstrap_chisq <- function(data, cond_var, var, size = 1000){
     table(bs[[cond_var]], bs[[var]]) %>% tidy_assoc_stats()
   })  
 }
+
+
+get_style_stats <- function(data, for_report = F){
+  style_stats <- data %>% 
+    freq2_table(full_type, style ) %>% 
+    arrange(full_type, desc(freq)) %>%
+    pivot_wider(id_cols = style, 
+                values_from = c(n, freq), 
+                names_from = full_type, 
+                values_fill = 0) %>% 
+    mutate(
+      total_artist = n_artist_strong + n_artist_slight, 
+      total_style = n_style_slight + n_style_strong,
+      total_artist_col = sum(total_artist),
+      total_style_col = sum(total_style),
+      total1 = total_artist + total_style,
+      total_freq_artist = round(100*total_artist/total_artist_col, 1), 
+      total_freq_style = round(100*total_style/total_style_col, 1),
+      total = total_artist + total_style) %>%
+    select(-c(total1, total_artist_col, total_style_col)) %>% 
+    arrange(desc(total)) 
+  if(for_report){
+    colSums <- style_stats %>% select(-1) %>% colSums() %>% t() %>% as_tibble() %>% mutate(style = "Sum") %>% 
+      select(style, everything())
+    style_stats <- bind_rows(style_stats, colSums) %>% 
+      mutate(across(starts_with("freq_"), to_perc))
+    
+    style_stats <- style_stats %>% 
+    set_names(c("Style", 
+                "Count (Artist/Slight)", 
+                "Count (Artist/Strong)", 
+                "Count (Style/Slight)", 
+                "Count (Style/Strong)", 
+                "Perc. (Artist/Slight)", 
+                "Perc. (Artist/Strong)", 
+                "Perc. (Style/Slight)", 
+                "Perc. (Style/Strong)",
+                "Count (Artist)",
+                "Count (Style,)",
+                "Perc. (Artist)",
+                "Perc. (Style)",
+                "Count"))
+  } else{
+    style_stats <- style_stats %>% mutate(across(starts_with("freq_"), to_perc))
+  }       
+
+  style_stats 
+}
+
+get_binary_style_judgments <- function(data, type  = "style", degree = "", threshold = 3, alpha = .01, with_mixed = T){
+  data <- data %>%  filter(style != "NA") 
+  if(nchar(type) > 0){
+    data <- data %>% filter(type == !!type)
+  }
+  if(nchar(degree) > 0){
+    data <- data %>% filter(degree == !!degree)
+  }
+  
+  data <- data %>% 
+    select(style, starts_with("DS")) %>% 
+    pivot_longer(-style) %>% 
+    mutate(value = factor(value > threshold, labels = c("no", "yes")))
+  styles <- unique(data$style)
+  vars <- unique(data$name)
+
+  map_dfr(styles, function(st){
+    data <- data %>% filter(style == st)
+    map_dfr(vars, function(v){
+      data <- data %>% filter(name == v)
+      tab <- sort(table(data$value), decreasing = T) 
+      chisq <- suppressWarnings(tab %>% chisq.test())
+      applies <- names(tab)[1]
+      if(with_mixed && chisq$p.value >= alpha){
+        applies <- "mixed"
+      }
+      #browser()
+      tibble(style = st, 
+             var = v, 
+             applies = applies, 
+             maj_n = tab[1], 
+             min_n = tab[2], 
+             n = sum(tab), 
+             log2_BF = log2(tab[1]/tab[2]))
+    })
+  }) %>% mutate(var = fashion_subscale_names(var))
+}
+get_all_binary_style_judgements <- function(data, threshold = 3, alpha = .01, with_mixed = T){
+    map_dfr(unique(data$type), function(ty){
+      map_dfr(unique(data$degree), function(deg){
+        get_binary_style_judgments(data, 
+                                   type = ty, 
+                                   degree = deg, 
+                                   alpha = alpha, 
+                                   threshold = threshold, 
+                                   with_mixed = with_mixed) %>% mutate(type = ty, 
+                                                                       degree = deg)
+      })
+    }) 
+  
+}
+binary_style_judgments_plot <- function(data, threshold = 3, alpha = .01, with_mixed = T, only_agreement = F){
+  pallette <- c("grey", "black", "red")#
+  if(!with_mixed){
+    pallette <- c("black", "red")#
+  }
+  plot_data <- get_all_binary_style_judgements(data, threshold, alpha, with_mixed) 
+  if(only_agreement){
+    plot_data <- plot_data %>% 
+      group_by(style, var) %>% 
+      summarise(div = length(table(applies)), 
+                applies = names(table(applies))[which.max(table(applies))] ) %>% 
+      filter(div == 1) %>% 
+      mutate(Applies = factor(applies))
+  }
+  else {
+    plot_data <- plot_data %>% 
+      mutate(Applies = factor(applies), type = str_to_title(type), degree = str_to_title(degree))
+  }
+  q <- plot_data %>% ggplot(aes(x = style, y = var, fill = Applies)) 
+  q <- q + geom_tile() 
+  q <- q + coord_flip() 
+  if(!only_agreement){
+    q <- q + facet_grid(type ~degree)
+  }
+  q <- q + theme_bw()
+  q <- q + theme(panel.grid.major =  element_blank(), panel.grid.minor = element_blank(), 
+                 strip.background = element_rect(fill = "white"), 
+                 axis.text.x = element_text(angle = 45, hjust = 1))
+  q <- q + scale_fill_manual(values = pallette)
+  q <- q + labs(x = "", y = "")
+  q
+}
+
+get_all_kripp <- function(data, type  = "style", degree = "strong" ){
+  data <- data %>%  filter(style != "NA") 
+  if(nchar(type) > 0){
+    data <- data %>% filter(type == !!type)
+  }
+  if(nchar(degree) > 0){
+    data <- data %>% filter(degree == !!degree)
+  }
+  styles <- unique(data$style)
+  map_dfr(styles, function(st){
+    ka <- data %>% filter(style == st) %>% select(starts_with("DS")) %>% as.matrix() %>% irr::kripp.alpha()
+    tibble(type = type, degree = degree, style = st, ka = ka$value)
+  })
+}
+

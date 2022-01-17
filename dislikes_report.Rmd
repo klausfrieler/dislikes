@@ -28,7 +28,7 @@ We collected data from a total of 639 participants. After inspecting the rating 
 The participant were mainly highly educated, with a `r (table(metadata$higher_ed) %>% prop.table() %>% round(3) %>% magrittr::multiply_by(100))["TRUE"]`% having an university or college degree (bachelor, master, or PhD), and `r (table(metadata$at_least_a_level) %>% prop.table() %>% round(3) %>% magrittr::multiply_by(100))["TRUE"]`% having a school degree of A-levels ("Abitur"), with `r (table(metadata$job) %>% prop.table() %>% round(3) %>% magrittr::multiply_by(100))[["student"]]`% of the sample being students. This rather homogeneous group prohibited deeper analyses with respect to education.
 
 
-## Virtual Disklike Scale
+## Contruction of a Dislike Scale
 
 In order to reduce the number of variables and thus the complexity of the analysis, we first applied an exploratory factor analysis to the rating scales, across all four conditions. The resulted in an oblique factor solution with eight factors (explaining a total of 53% of variance, see Supplementary Material). After inspecting this factor solution, it became clear that the factors did not neatly represent distinct psychological constructs (or judgment strategies), but that different  constructs had been merge in to some of the factors due to strong correlations. As using these impure factors would have made the interpretation of results blurry,  we decided to "purify" the original factors manually by constructing a scale with a conceptually disentangled set of subscales. This led finally to a "virtual dislike scale" with nine subscales with a clearer semantic separation The definition of the subscales in terms of the original items can be found in Tab. 1. (A list of item names and item wording as well as  a full correlation matrix of all single items, can be found in the Supplementary Material). Subscale scores were calculated as the mean value of all involved items after using the `R` package `mice` for imputing missing values. The subscales were named **Too Niche**, **Too Complex**, **Too Emotional**, **Too Simple**, **Not Authentic**, **Too Mainstream**, **Social Incongruence**, **No Impact**, and **Displeasure**. The **Not Authentic** subscale consists of only one item, which is basically suboptimal for a subscale, but this choice can be justified by the items unique semantic position within all items. Authenticity is a very specific cultural concept, which cannot be grouped *a priori* with any of the other items in our view.  
 
@@ -150,23 +150,15 @@ master %>%
 
 ## Differences in style selections
 
-Next, we analysed the distribution of styles and their assessment. In the two Style conditions, participants had to explicitly select disliked styles from the list with 15 suggestions. In the two Artist conditions, participants were also asked to provide a style descriptor for the chosen artist, even though sometimes there were not able to do so (`r master %>% filter(type == "artist", style == "NA") %>% nrow()` out of `r master %>% filter(type == "artist") %>% nrow()`). The distribution of styles is rather inbalanced, see Tab. 4. The top disliked styles were *Schlager*, *Traditional* and *HipHop*. *Schlager* occurs about twice as often as the next styles, either *HipHop* or *Tradtional*, which highlights the special role *Schlager* plays in the German music culture.
+Next, we analysed the distribution of styles and their assessment. In the two Style conditions, participants had to explicitly select disliked styles from a list with 15 suggestions. In the two Artist conditions, participants were also asked to provide a style descriptor for the chosen artist, even though sometimes there were not able to do so (`r master %>% filter(type == "artist", style == "NA") %>% nrow()` out of `r master %>% filter(type == "artist") %>% nrow()`). The distribution of styles is rather inbalanced, see Tab. 4. The top disliked styles were *Schlager*, *Traditional* and *HipHop*. *Schlager* occurs about twice as often as the next styles, either *HipHop* or *Tradtional*, which highlights the special role *Schlager* plays in the German music culture.
 
-There are clear differences between the Artist and Style conditions. In the Artist condition, there were much more mentions of *HipHop*, *Pop*, and *Rock* artists than in the Style conditions, whereas the opposite was true for *Traditional*, *Metal*, *Techno*, and *Country*. This can be explained by the fact, that *Pop*, *HipHop*, and *Rock* are very broad and prominent styles that seldom generally disliked in its entirety, whereas single artists from these styles can easily draw very negative judgments. It also more likely that people actually know artists from these style due to their higher popularity, whereas for more generally disliked styles such as *Metal*, *Techno*, and *Traditional* people are less likely to know names of specific artists, because these are (1) disliked styles, and (2) they are not (anymore) strongly present in public media, or operate generally without a prominent star system such as *Techno*.     
+There are clear differences between the Artist and Style conditions. In the Artist condition, there were much more mentions of  *Pop* and *Rock* artists than in the Style condition, whereas *Schlager*, *HipHop*, and *Classical* were about equally often selected, and all other styles appeared more frequently selected in the Style conditions. This can be explained by the fact, that *Pop* and *Rock* are very broad and prominent styles that are rarely  disliked in its entirety, but single artists from these styles can easily draw very negative judgments. It also more likely that people actually know artists from these styles due to their higher popularity, whereas for more generally disliked styles such as *Metal*, *Techno*, and *Traditional* people are less likely to know names of specific artists, because these are (1) disliked styles, and (2) they are not (anymore) strongly present in public media, or operate generally without a prominent star system such as *Techno*. 
+
+Comparing the subconditions, one finds that *Schlager*, *Traditional*, and *Metal* are always more frequent in the Strong category than in the Slight category. Techno is slightly more often mentioned in the Strong subcondition of  the Style condition, but about equally often in both Artist conditions. All other styles tend to occur more often in the Slight than in the Strong subconditions. This is particularly true for **Pop** in the Artist/Slight condition. All in all, the contrast in style distribution between the subconditions are less clear than in the comparison of Artist and Style conditions.
 
 ```{r style_stats, echo=FALSE, message=FALSE, warning=FALSE, eval = TRUE}
-style_stats <- master %>% 
-  freq2_table(type, style) %>% 
-  mutate(freq = round(100*freq, 1)) %>% 
-  arrange(type, desc(freq)) %>%
-  pivot_wider(id_cols = style, 
-              values_from = c(n, freq), 
-              names_from = type, 
-              values_fill = 0) %>% 
-  mutate(total = n_artist + n_style) %>% 
-  arrange(desc(total)) %>% 
-  set_names(c("Style", "Count (Artist)", "Count (Style)", "Perc. (Artist, %)", "Perc. (Style, %)", "Count"))
-
+style_stats <- get_style_stats(master, for_report = T) %>% 
+  select(Style, Count, `Perc. (Artist)`, `Perc. (Style)`, starts_with("Perc. (A"), starts_with("Perc. (S"))
 flextable::flextable( style_stats , 
                       cwidth = .75, cheight = .2 )%>% 
   fontsize(i = NULL, j = NULL, size = 8, part = "body") %>% 
@@ -174,19 +166,86 @@ flextable::flextable( style_stats ,
   set_caption("Style counts and percentages by main condition (Style and Artist)")
 ```
 
-Style diversity was rather high, `r master %>% group_by(p_id) %>% summarise(style_diversity = n_distinct(style)/(n()), .groups = "drop") %>% freq_table(style_diversity) %>% filter(style_diversity == 1) %>% mutate(freq = round(100*freq, 1)) %>% pull(freq)`% selected all different styles in all conditions (or only took part in one condition), whereas nobody mentioned only one style.
+Style diversity was rather high, `r master %>% group_by(p_id) %>% summarise(style_diversity = n_distinct(style)/(n()), .groups = "drop") %>% freq_table(style_diversity) %>% filter(style_diversity == 1) %>% mutate(freq = round(100*freq, 1)) %>% pull(freq)`% selected all different styles in all conditions (or only took part in one condition), whereas nobody mentioned only one style (but note, that participant had to chose two different styles in the Style condition.)
 
 To check whether the style distibributions were different in the different conditions and degrees of dislike, we used a bootstrap Chi-squared test (with 100 samples) to alleviate the repeated measurement problem. This became highly significant (all *p < .001*, mean *Cramers V = .365*) with a strong effect. The same held true for comparing Style vs. Artist conditions (all *p < .001*, mean *Cramer's V = .502*) and also for Strong vs. Slight degrees (all *p < .001*, mean *Cramer's V = .282*).
 
-The main differences in the Strong/Slight subconditions is that *Pop*, *Country*, and *Reggae* artists were chosen more frequently in the Slight conditions, whereas *Metal*, *Schlager*, and *Traditional* occurred more often in the Strong conditions.  
+The main differences for the Strong/Slight subconditions is that *Pop*, *Country*, and *Reggae* artists were chosen more frequently in the Slight conditions, whereas *Metal*, *Schlager*, and *Traditional* occurred more often in the Strong conditions.
 
-```{r style_diff_condition, echo = FALSE, fig.width = 12, fig.height = 8, fig.cap = "Fig. 4. Chi-Square Residuals of Styles by the four conditions."}
+```{r style_diff_condition, echo = FALSE, fig.width = 12, fig.height = 8, fig.cap = "Fig. 4. Chi-Squared residuals of styles across the four conditions."}
 table(master %>% 
         mutate(full_type = fashion_subscale_names(full_type) %>% str_replace(" ", " / ")) %>% 
         pull(full_type), 
       master$style) %>% 
   vcd::assoc()
 ```
+
+## Rating differences between styles by condition 
+
+Besides the clearly different distributions of styles in all conditions, we were also interested in difference in ratings in the Artist/Style main conditions and the Slight/Strong subconditions. As the distribution of styles was rather different in the Style vs. Artist main conditions (cf. Tab. 4), we treated both cases separately and stratified also for styles. Furthermore, as the style distributions are very skewed and the Dislike subscales clearly differ from normality, we used an permutation test (``independence_test`` from the ``coin`` package for ``R``) as an omnibus test and then resorted to a battery of Kruskal-Wallis tests to check for differences in the Artist/Style main conditions or the Strong/Slight sub conditions on all subscales while using Holm adjustment of p-values to account for multiple testing. 
+
+```{r mean_value_plot_style,  fig.height = 8, fig.width = 12, echo = FALSE, fig.cap = "Fig. 6. Mean value of style ratings in the Style main conditions for the Strong/Slight subconditions. Error bars are 95% CI, dot size is proportional to total count of style."}
+mean_value_plot(master %>% filter(style != "NA"), weighted = F, type = "style")
+```
+
+```{r mean_value_plot_artist, fig.height = 8, fig.width = 12, echo = FALSE, fig.cap = "Fig. 7. Mean value of style ratings in the Artist main conditions for the Strong/Slight subconditions. Error bars are 95% CI, dot size is proportional to total count of style."}
+mean_value_plot(master, weighted = F, type = "artist")
+```
+
+The results for comparing the sub conditions, can be found in Tab. 7, where only significant differences at the 5% level (adjusted) are shown (in the Artist condition the cases with no assigned style are omitted, for a complete table please refer to the Supplementary Material). Both omnibus tests yielded highly significant differences (*p < .001*). A graphical display of mean values and 95% confidence intervals can be seen in Fig. 6 and 7. 
+
+The main differences are, expectedly, to be found on the subscale **Displeasure**, where values in the Strong subcondition are higher than in the Slight subcondition, with overall larger differences in the Artist main condition. Other differences pertain to **Social Incongruence** (Artist: *Pop* and *Rock*, Style: *Schlager*) and **Not Authentic** (Artist: *Pop* and *Schlager*). All in all, the main differences between the two main and two subconditions lie mostly in the selection of styles as well as in the higher **Displeasure** ratings in the Strong vs. the Slight conditions.
+
+```{r ks_tests,  fig.height = 8, fig.width = 12, echo = FALSE}
+
+ks_artist <- get_mean_differences(master %>% filter(type == "artist"), group_var = "degree", target_var = "style", names(master)[str_detect(names(master), "DS")]) %>%  filter(p_adj < .05, target != "NA") %>% mutate(type = "Artist") 
+
+ks_style <- get_mean_differences(master %>% filter(type == "style"), group_var = "degree", target_var = "style", names(master)[str_detect(names(master), "DS")]) %>%  filter(p_adj < .05) %>% mutate(type = "Style")
+
+ks_tab <- bind_rows(ks_style, ks_artist) %>% 
+  select(type, target, DS = var, -grouping, d, statistic, N_slight, N_strong, p_adj) %>%
+  mutate(DS = fashion_subscale_names(DS),
+         d = -d,
+         p_adj = sprintf("%.3f%s", p_adj, sig = get_sig_stars(p_adj)), 
+         across(where(is.numeric), round, 3)) %>% 
+  arrange(type, DS, target, desc(d)) %>% 
+  set_names(c("Condition","Style",  "Dislike Subscale", "d (Strong - Slight)", "Statistic", "N (slight)", "N (strong)", "p (adjusted)")) 
+flextable::flextable( ks_tab , 
+                      cwidth = .75, cheight = .2 )%>% 
+  fontsize(i = NULL, j = NULL, size = 8, part = "body") %>% 
+  fontsize(size = 8, part = "header") %>% 
+  set_caption("Significant  differences in style ratings on the Dislike subscales. Last column, p-values are Holm adjusted.")
+```
+
+
+Both omnibus tests for comparing the main conditions across the same subcondition, resulted in highly significant differences (*p < .001*), but no Kruskal-Walis test survived correction for multiple testing. This is corroborated by the mean value plots in Fig. 8 and 9, which show either similar values throughout for more frequent styles or wide and overlapping confidence Intervals for the less frequent styles. 
+
+
+```{r mean_value_plot_strong,  fig.height = 8, fig.width = 12, echo = FALSE, fig.cap = "Fig. 8. Mean value of style ratings in the Strong sub conditions for the Artist/Style main conditions. Error bars are 95% CI, dot size is proportional to total count of style."}
+mean_value_plot2(master %>% filter(style != "NA"), weighted = F, degree = "strong")
+```
+
+```{r mean_value_plot_slight,  fig.height = 8, fig.width = 12, echo = FALSE, fig.cap = "Fig. 9. Mean value of style ratings in the Slight sub conditions for the Artist/Style main conditions. Error bars are 95% CI, dot size is proportional to total count of style."}
+mean_value_plot2(master %>% filter(style != "NA"), weighted = F, degree = "slight")
+```
+
+## Aggreement in style ratings across conditions
+
+We were also interested, how consisten the participants judged the different styles in the different conditions on the
+nine Dislike subscales. To this end, we binarized the Dislike subscales, by cutting along the midpoint of the scale, i.e. for values above 3 we intepreted the subscale as an attribute that applies, otherwise as an attribute that not applies. We then looked a the distribution of the attributes and generated a overall judgment by a majority vote. If, however, the votes for this attribute (per style and conditions) was no significantly different according to a chi-squared test with signinifican level of 1%, we assigned a "mixed" vote. We then checked for every combination of style and attribute whether it was applied in all four conditions. The results can be found in Fig. X. 
+
+```{r binary_judgement, fig.height = 8, fig.width = 12, echo = FALSE, fig.cap = "Fig. y, Agreement for the four conditions of styles attributes judgments."}
+binary_style_judgments_plot(master, only_agreement = F)
+```
+
+This clearly shows that judgmente of the style in the four conditions was mostly not congruent (white squares), only *Traditional*, *Techno*, *Schlager* and *Pop*  were consistently judged as **Too Simple**.  Like *Schlager* and *Pop* were never attributed as **Too Niche**, and *Metal* and *HipHop* were never judged as **Too Mainstream**. The anyway rarely used **Too Complex** and **Too Emotional** were never consistently attributed to any style, only for *World*, where the judgement were always mixed on both attribute, and *Blues*, which always received a mixed judgment of **Too Emotional**. This reflect the general consistently mixed judgement of *World* and and *Blues*, wich also stems from the fact that these were the least frequently selected styles. 
+
+```{r binary_judgement_agreement, fig.height = 8, fig.width = 12, echo = FALSE, fig.cap = "Fig. X, Agreement across conditions of style attributes."}
+binary_style_judgments_plot(master, only_agreement = T)
+```
+
+
+## Differences by covariates
 
 We further checked for differences in style distributions with respect to the demographic variables **Age Group** and **Gender** (dropping the "diverse" gender group) as well as for assigned **LPA Class**. Results of the Chi-Squared tests can be found in Tab. 6. There are strong differences for **Age Group** and **LPA Class** in all four conditions, but only one for **Gender** (in the Style/Strong condition). Chi-Squared residual plots of styles for the Style/Strong conditions according to the demographic variables can be found in Fig. 5a, b and c, from which some noteworthy observations can be made. 
 
@@ -210,55 +269,20 @@ flextable::flextable( style_diffs ,
 
 With respect to **Age Group**, the younger (less than 30 years) group clearly more dislikes *Schlager*, *Metal*, and *Pop*, whereas the elder group more dislikes *Traditional*, *Jazz*, *Country*, and *Techno*. On the other hand, the elder age group are more open to *Schlager*, *Metal*, and *Pop*, whereas the younger group has fewer reservations against *Traditional*, *Techno*, and *Jazz*.   
 
+
+There are some stereotypes to be corroborated in the style preferences of males and females. Males dislike more strongly and often *Schlager*, *Pop*, *HipHop*, and *EDM*, but are more fond of *Jazz*, *Metal*,  *Techno*, and also *House*. The female respondents show the clear opposite: more dislikes for styles traditionally often regarded as "virile", such as *Jazz* and *Metal* as well as *Techno*, and fewer reservations against *Schlager*, *EDM*, *HipHop*, and *Pop*.
+
+
+Finally, the differences for **LPA Class** justify their denomination as *Highbrow* and *Lowbrow* reasoning styles. **Highbrows** have more dislikes for *Schlager*, *Traditional*, *EDM*, and *Pop*, whereas *Lowbrow* profiles more strongly dislike *Jazz*, *Metal*, and *Techno*.
+
 ```{r chisqres_age_group,  fig.height = 6, fig.width = 9, warning = FALSE, echo = FALSE, fig.cap = "Fig. 5a. Chi-Squared Residuals for styles in  Style/Strong conditions for Age Group"}
 get_prop_table(master, group = "age_group", output_format = "plot")
 ```
-
-There are some stereotypes to be corroborated in the style preferences of males and females. Males dislike more strongly and often *Schlager*, *Pop*, *HipHop*, and *EDM*, but are more fond of *Jazz*, *Metal*,  *Techno*, and also *House*. The female respondents show the clear opposite: more dislikes for styles traditionally often regarded as "virile", such as *Jazz* and *Metal* as well as *Techno*, and fewer reservations against *Schlager*, *EDM*, *HipHop*, and *Pop*.
 
 ```{r chisqres_gender,  fig.height = 6, fig.width = 9, warning = FALSE, echo = FALSE, fig.cap = "Fig. 5b. Chi-Squared Residuals for styles in  Style/Strong conditions for Gender"}
 get_prop_table(master, group = "gender", output_format = "plot")
 ```
 
-Finally, the differences for **LPA Class** justify their denomination as *Highbrow* and *Lowbrow* reasoning styles. **Highbrows** have more dislikes for *Schlager*, *Traditional*, *EDM*, and *Pop*, whereas *Lowbrow* profiles more strongly dislike *Jazz*, *Metal*, and *Techno*.
-
 ```{r chisqres_lpa_class,  fig.height = 6, fig.width = 9, warning = FALSE, echo = FALSE, fig.cap = "Fig. 5c. Chi-Squared Residuals for styles in  Style/Strong conditions for LPA classes"}
 get_prop_table(master, group = "lpa_class", output_format = "plot")
-```
-
-## Rating differences between styles by condition 
-
-Besides the clearly different distributions of styles in all conditions and demographics, we were also interested in difference in ratings in the Slight and Strong subconditions. As the distribution of styles was rather different in the Style vs. Artist main conditions (cf. Tab. 4), we treated both cases separately and stratified also for styles. Furthermore, as the style distribution are very skewed and the Dislike subscales clearly differ from normality, we used an permutation test (``independence_test`` from the ``coin`` package for ``R``) as an omnibus test and then resorted to a battery of Kruskal-Wallis tests to check for differences in the Strong and Slight subconditions on all subscales while using Holm adjustment of p-values to account for multiple testing. The results can be found in Tab. 7, where only significant differences at the 5% level are shown (in the Artist condition the cases with no assigned style are omitted, for a complete table please refer to the Supplementary Material). Both omnibus tests resulted in highly significant differences (*p < .001*). A graphical display of mean values and 95% confidence intervals can be seen in Fig. 6 and 7. 
-
-
-```{r ks_tests,  fig.height = 8, fig.width = 12, echo = FALSE}
-
-ks_artist <- get_mean_differences(master %>% filter(type == "artist"), group_var = "degree", target_var = "style", names(master)[str_detect(names(master), "DS")]) %>%  filter(p_adj < .05, target != "NA") %>% mutate(type = "Artist") 
-
-ks_style <- get_mean_differences(master %>% filter(type == "style"), group_var = "degree", target_var = "style", names(master)[str_detect(names(master), "DS")]) %>%  filter(p_adj < .05) %>% mutate(type = "Style")
-
-ks_tab <- bind_rows(ks_style, ks_artist) %>% 
-  select(type, target, DS = var, -grouping, d, statistic, N_slight, N_strong, p_adj) %>%
-  mutate(DS = fashion_subscale_names(DS),
-         d = -d,
-         p_adj = sprintf("%.3f%s", p_adj, sig = get_sig_stars(p_adj)), 
-         across(where(is.numeric), round, 3)) %>% 
-  arrange(type, DS, target, desc(d)) %>% 
-  set_names(c("Condition","Style",  "Dislike Subscale", "d (Strong - Slight)", "Statistic", "N (slight)", "N (strong)", "p (adj)")) 
-flextable::flextable( ks_tab , 
-                      cwidth = .75, cheight = .2 )%>% 
-  fontsize(i = NULL, j = NULL, size = 8, part = "body") %>% 
-  fontsize(size = 8, part = "header") %>% 
-  set_caption("Significant  differences in style ratings on the Dislike subscales. Last column, p-values are Holm adjusted.")
-```
-
-The main differences are, expectedly, to be found on the subscale **Displeasure**, where values in the Strong subcondition are higher than in the Slight subcondition, with overall larger differences in the Artist main condition. Other differences pertain to **Social Incongruence** (Artist: *Pop* and *Rock*, Style: *Schlager*) and **Not Authentic** (Artist: *Pop* and *Schlager*). All in all, the main differences between the two main and two subconditions lie mostly in the selection of styles as well as in the higher **Displeasure** ratings in the Strong vs. the Slight conditions.
-
-
-```{r mean_value_plot_style,  fig.height = 8, fig.width = 12, echo = FALSE, fig.cap = "Fig. 6. Mean value of style ratings in the Style main conditions for the Strong/Slight subconditions. Error bars are 95% CI, dot size is proportional to total count of style."}
-mean_value_plot(master %>% filter(style != "NA"), weighted = F, type = "style")
-```
-
-```{r mean_value_plot_artist, fig.height = 8, fig.width = 12, echo = FALSE, fig.cap = "Fig. 7. Mean value of style ratings in the Artist main conditions for the Strong/Slight subconditions. Error bars are 95% CI, dot size is proportional to total count of style."}
-mean_value_plot(master, weighted = F, type = "artist")
 ```
