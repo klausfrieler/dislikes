@@ -288,6 +288,7 @@ get_all_binary_style_judgements <- function(data, threshold = 3, alpha = .01, wi
     }) 
   
 }
+
 binary_style_judgments_plot <- function(data, threshold = 3, alpha = .01, with_mixed = T, only_agreement = F){
   pallette <- c("grey", "black", "red")#
   if(!with_mixed){
@@ -321,7 +322,7 @@ binary_style_judgments_plot <- function(data, threshold = 3, alpha = .01, with_m
   q
 }
 
-get_all_kripp <- function(data, type  = "style", degree = "strong" ){
+get_kripp_by_style <- function(data, type  = "style", degree = "strong" ){
   data <- data %>%  filter(style != "NA") 
   if(nchar(type) > 0){
     data <- data %>% filter(type == !!type)
@@ -331,8 +332,48 @@ get_all_kripp <- function(data, type  = "style", degree = "strong" ){
   }
   styles <- unique(data$style)
   map_dfr(styles, function(st){
-    ka <- data %>% filter(style == st) %>% select(starts_with("DS")) %>% as.matrix() %>% irr::kripp.alpha()
-    tibble(type = type, degree = degree, style = st, ka = ka$value)
+    tmp <- data %>% filter(style == st) %>% select(starts_with("DS")) %>% as.matrix()
+    ka <- tryCatch({
+      tmp  %>% irr::kripp.alpha(method = "interval")},
+      error = function(e){
+        messagef("No kripp.alpha for %s!", st)
+        ka <- list(value = NA)
+      })
+    tibble(type = type, degree = degree, style = st, ka = ka$value, n_raters = nrow(tmp))
   })
 }
 
+get_all_kripp <- function(data){
+  type_ka <- data %>% get_kripp_by_style(degree = "") %>% mutate(full_type = "type")
+  degree_ka <- data %>% get_kripp_by_style(type = "") %>% mutate(full_type = "deg")
+  full_ka <- data %>% get_kripp_by_style(type = "", degree = "") %>% mutate(full_type = "full")
+  map_dfr(unique(data$type), function(ty){
+    map_dfr(unique(data$degree), function(deg){
+      get_kripp_by_style(data, ty, deg) %>% mutate(full_type = sprintf("%s_%s", ty, deg))
+    })
+  }) %>% 
+    select(type, degree, style, full_type, n_raters, ka) %>% 
+    bind_rows(type_ka, degree_ka, full_ka)
+}
+
+kripp_alpha_style_judgments_plot <- function(all_kas){
+  pallette <- c("grey", "black", "red")#
+  plot_data <- all_kas %>% 
+    filter(str_detect(full_type, "_"), !is.na(ka)) %>% 
+    mutate(full_type = fct_reorder(fashion_subscale_names(full_type) %>% str_replace( " ", "/") 
+                                   , ka, mean) %>% fct_rev(), 
+           style =  fct_reorder(style, ka, mean),
+           label = sprintf("%.2f (%d)", ka, n_raters),
+           `Krippendorff's Alpha` = ka) 
+  #browser()
+  q <- plot_data %>% ggplot(aes(x = style, y = full_type, fill = `Krippendorff's Alpha`)) 
+  q <- q + geom_tile() 
+  q <- q + geom_text(aes(label = label), color = "white") 
+  q <- q + coord_flip() 
+  q <- q + theme_bw()
+  q <- q + theme(panel.grid.major =  element_blank(), panel.grid.minor = element_blank(), 
+                 strip.background = element_rect(fill = "white"))
+  q <- q + viridis::scale_fill_viridis()
+  q <- q + labs(x = "", y = "")
+  q
+}

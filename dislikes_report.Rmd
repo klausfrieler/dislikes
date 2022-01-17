@@ -247,6 +247,12 @@ This clearly shows that judgmente of the style in the four conditions was mostly
 binary_style_judgments_plot(master, only_agreement = T)
 ```
 
+On alternative route to analyze interrater agreement, we calculated Krippendorff Alpa for each style in each of the four conditions, across the nine Dislike subscales. Results can be found in Fig. Y.  Styles and conditions are sorted according to largest mean interrater agreement. This basically corroborate the precedings analysis. Only very few values pass the usual .6667 threshold of acceptable agreement. (KF: Very sketchy text... To be improvded).
+
+```{r kripp_alpha_style_judgments, fig.height = 8, fig.width = 12, echo = FALSE, fig.cap = "Fig. Y, Krippendorff's ALpha for Agreement of style ratings across the 9 Dislike subscales, by  conditions. Labels are alpha values, number of raters in brackets."}
+all_kas <- get_all_kripp(master)
+kripp_alpha_style_judgments_plot(all_kas)
+```
 
 ## Differences by covariates
 
