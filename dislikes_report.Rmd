@@ -21,6 +21,10 @@ metadata <- master %>% distinct(p_id, .keep_all = T) %>%
          other_ed = !at_least_a_level)
 ```
 
+# Header
+## Header
+### Header
+
 ## Participants
 
 We collected data from a total of 639 participants. After inspecting the rating behaviour for anomnalities, we excluded 12 participants, who showed 90% of all their ratings on the extreme end of the ratings scales (low or high). After this step,  `r nrow(metadata)` participants (`r nrow(metadata %>% filter(gender == "F"))` female, `r nrow(metadata %>% filter(gender == "M"))` male) stayed in the study, with a median age of `r median(metadata$age, na.rm = T)` (range: `r sprintf("%s-%s", min(metadata$age, na.rm = T), max(metadata$age, na.rm = T))`, IQR = `r IQR(metadata$age, na.rm = T) %>% round(1)`). The age distribution appeared to be a bimodal distribution, which is rather typical for this kind of online study with a convenience sample. Fitting a Gaussian Mixture Model (using the `MClust` package for `R`) corroborated this visual impression. We found one age group with  participants up to 30 years (N = `r (table(metadata$age_group))["<=30"]`, `r (table(metadata$age_group) %>% prop.table() %>% round(3) %>% magrittr::multiply_by(100))["<=30"]`%), and another one with participants older than 30 years (N = `r table(metadata$age_group)[">30"]`,  `r (table(metadata$age_group) %>% prop.table() %>% round(3) %>% magrittr::multiply_by(100))[">30"]`%). 
@@ -179,7 +183,6 @@ table(master %>%
       master$style) %>% 
   vcd::assoc()
 ```
-
 ## Rating differences between styles by condition 
 
 Besides the clearly different distributions of styles in all conditions, we were also interested in difference in ratings in the Artist/Style main conditions and the Slight/Strong subconditions. As the distribution of styles was rather different in the Style vs. Artist main conditions (cf. Tab. 4), we treated both cases separately and stratified also for styles. Furthermore, as the style distributions are very skewed and the Dislike subscales clearly differ from normality, we used an permutation test (``independence_test`` from the ``coin`` package for ``R``) as an omnibus test and then resorted to a battery of Kruskal-Wallis tests to check for differences in the Artist/Style main conditions or the Strong/Slight sub conditions on all subscales while using Holm adjustment of p-values to account for multiple testing. 
