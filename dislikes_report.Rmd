@@ -14,27 +14,24 @@ source("dislikes.R")
 source("networks.R")
 master <- setup_workspace(F, F)
 metadata <- master %>% distinct(p_id, .keep_all = T) %>% 
-  select(p_id, gender, age, job, education, age_group, degree) %>% 
+  select(p_id, gender, age, job, education, age_group, degree, lpa_class, total_lpa_class) %>% 
   mutate(age = as.numeric(age)) %>% 
   mutate(higher_ed = education %in% c("bachelor", "master", "promotion"), 
-         at_least_a_level = education %in% c("bachelor", "master", "promotion", "a-levels"), 
-         other_ed = !at_least_a_level)
+         a_levels = factor(education %in% c("bachelor", "master", "promotion", "a-levels"), 
+                           labels = c("No A-levels", "A-levels")))
 ```
 
-# Header
-## Header
-### Header
 
 ## Participants
 
 We collected data from a total of 639 participants. After inspecting the rating behaviour for anomnalities, we excluded 12 participants, who showed 90% of all their ratings on the extreme end of the ratings scales (low or high). After this step,  `r nrow(metadata)` participants (`r nrow(metadata %>% filter(gender == "F"))` female, `r nrow(metadata %>% filter(gender == "M"))` male) stayed in the study, with a median age of `r median(metadata$age, na.rm = T)` (range: `r sprintf("%s-%s", min(metadata$age, na.rm = T), max(metadata$age, na.rm = T))`, IQR = `r IQR(metadata$age, na.rm = T) %>% round(1)`). The age distribution appeared to be a bimodal distribution, which is rather typical for this kind of online study with a convenience sample. Fitting a Gaussian Mixture Model (using the `MClust` package for `R`) corroborated this visual impression. We found one age group with  participants up to 30 years (N = `r (table(metadata$age_group))["<=30"]`, `r (table(metadata$age_group) %>% prop.table() %>% round(3) %>% magrittr::multiply_by(100))["<=30"]`%), and another one with participants older than 30 years (N = `r table(metadata$age_group)[">30"]`,  `r (table(metadata$age_group) %>% prop.table() %>% round(3) %>% magrittr::multiply_by(100))[">30"]`%). 
 
-The participant were mainly highly educated, with a `r (table(metadata$higher_ed) %>% prop.table() %>% round(3) %>% magrittr::multiply_by(100))["TRUE"]`% having an university or college degree (bachelor, master, or PhD), and `r (table(metadata$at_least_a_level) %>% prop.table() %>% round(3) %>% magrittr::multiply_by(100))["TRUE"]`% having a school degree of A-levels ("Abitur"), with `r (table(metadata$job) %>% prop.table() %>% round(3) %>% magrittr::multiply_by(100))[["student"]]`% of the sample being students. This rather homogeneous group prohibited deeper analyses with respect to education.
+The participant were mainly highly educated, with a `r (table(metadata$higher_ed) %>% prop.table() %>% round(3) %>% magrittr::multiply_by(100))["TRUE"]`% having an university or college degree (bachelor, master, or PhD), and `r (table(metadata$a_levels) %>% prop.table() %>% round(3) %>% magrittr::multiply_by(100))["TRUE"]`% having a school degree of A-levels ("Abitur"), with `r (table(metadata$job) %>% prop.table() %>% round(3) %>% magrittr::multiply_by(100))[["student"]]`% of the sample being students. Nevertheless, the older age group was a little bit less educated than the younger, as measured by the proportion of participants having at least A-levels (97.6% for the younger vs.  89% for the  older, ``r report_chisq_test(table(metadata$age_group, metadata$a_levels), in_brackets = F)``). 
 
 
-## Contruction of a Dislike Scale
+## Construction of a Dislike Scale
 
-In order to reduce the number of variables and thus the complexity of the analysis, we first applied an exploratory factor analysis to the rating scales, across all four conditions. The resulted in an oblique factor solution with eight factors (explaining a total of 53% of variance, see Supplementary Material). After inspecting this factor solution, it became clear that the factors did not neatly represent distinct psychological constructs (or judgment strategies), but that different  constructs had been merge in to some of the factors due to strong correlations. As using these impure factors would have made the interpretation of results blurry,  we decided to "purify" the original factors manually by constructing a scale with a conceptually disentangled set of subscales. This led finally to a "virtual dislike scale" with nine subscales with a clearer semantic separation The definition of the subscales in terms of the original items can be found in Tab. 1. (A list of item names and item wording as well as  a full correlation matrix of all single items, can be found in the Supplementary Material). Subscale scores were calculated as the mean value of all involved items after using the `R` package `mice` for imputing missing values. The subscales were named **Too Niche**, **Too Complex**, **Too Emotional**, **Too Simple**, **Not Authentic**, **Too Mainstream**, **Social Incongruence**, **No Impact**, and **Displeasure**. The **Not Authentic** subscale consists of only one item, which is basically suboptimal for a subscale, but this choice can be justified by the items unique semantic position within all items. Authenticity is a very specific cultural concept, which cannot be grouped *a priori* with any of the other items in our view.  
+In order to reduce the number of variables and thus the complexity of the analysis, we first applied an exploratory factor analysis to the rating scales, across all four conditions. The resulted in an oblique factor solution with eight factors (explaining a total of 48% of variance, see Supplementary Material, Sect. *Orignal Factor Solution*). After inspecting this factor solution, it became clear that the factors did not neatly represent distinct psychological constructs (or judgment strategies), but that different  constructs had been merge in to some of the factors due to strong correlations. As using these impure factors would have made the interpretation of results blurry,  we decided to "purify" the original factors manually by constructing a scale with a conceptually disentangled set of subscales. This led finally to a "virtual dislike scale" with nine subscales with a clearer semantic separation The definition of the subscales in terms of the original items can be found in Tab. 1. (A list of item names and item wording as well as  a full correlation matrix of all single items, can be found in the Supplementary Material, Tab. S1). Subscale scores were calculated as the mean value of all involved items after using the `R` package `mice` for imputing missing values. The subscales were named **Too Niche**, **Too Complex**, **Too Emotional**, **Too Simple**, **Not Authentic**, **Too Mainstream**, **Social Incongruence**, **No Impact**, and **Displeasure**. The **Not Authentic** subscale consists of only one item, which is basically suboptimal for a subscale, but this choice can be justified by the items unique semantic position within all items. Authenticity is a very specific cultural concept, which cannot be grouped *a priori* with any of the other items in our view.  
 
 The subscales can be  grouped into "descriptions" and "consequences". The latter group comprises the subscales **No Impact** and **Displeasure**. Either the music has no effect or causes displeasure, and both are (conceptually disjunct) reasons to dislike music. This also implies that people expect impact from music, and when this impact is not provided, then it is a reason for disapproval (though more often, lack of impact might, in fact, cause indifference, but since  the participants in our study were only asked for disliked music, we cannot make any statements about this from our data). 
 
@@ -50,13 +47,13 @@ flextable::flextable(scale_definition_from_keys()) %>%
 
 ## Correlation and causal analysis
 
-The scale distributions and correlations across all conditions can be seen in the panel plot in Fig. 1 (see Supplementary Material for panel plots for all four conditions). All scales differ viusally from normality, which was also the case for most original items. They show either strong (mostly left) skewness or  bimodality. Only **Social Incongruence** and **No Impact** are unimodal with a mode not at an extreme end of the scale. The two scales **Too Complex** and **Too Emotional** are rarely used. The scale **Not Authentic** shows a clearly bimodal distibrution, indicating that artists and styles are typically considered as either authentic or not; there does not seem to be a strong middle ground for authenticity in the view of the respondents. 
+The scale distributions and correlations across all conditions can be seen in the panel plot in Fig. 1 (see Supplementary Material Fig. SP2-SP5, for panel plots for all four conditions). All scales differ viusally from normality, which was also the case for most original items. They show either strong (mostly left) skewness or  bimodality. Only **Social Incongruence** and **No Impact** are unimodal with a mode not at an extreme end of the scale. The two scales **Too Complex** and **Too Emotional** are rarely used. The scale **Not Authentic** shows a clearly bimodal distibrution, indicating that artists and styles are typically considered as either authentic or not; there does not seem to be a strong middle ground for authenticity in the view of the respondents. 
 
-```{r dS_scales_panel,  fig.height = 8, fig.width = 12, fig.cap = "Fig. 1. Panel plot of Dislike subscales", echo = FALSE}
+```{r DS_scales_panel,  fig.height = 8, fig.width = 12, fig.cap = "Fig. 1. Panel plot of Dislike subscales", echo = FALSE}
 psych::pairs.panels(master %>% select(starts_with("DS")) %>% set_names(fashion_subscale_names(names(.))))
 ```
 
-However, the correlation matrices of subscales differ significantly between the four main conditions (Jennrich's test for correlation matrices:  *p < .001* for all condition pairs). The distributions are partly also different, but the general observations from above still hold up (see Supplementary Material).
+However, the correlation matrices of subscales differ significantly between the four main conditions (Jennrich's test for correlation matrices:  *p < .001* for all condition pairs). The distributions are partly also different, but the general observations from above still hold up (see Supplementary Material, Fig. SP1-5).
 
 In order to find the most stable correlations, we used the correlation matrices for the complete data set and the four conditions and selected all pairs of correlations that were highly significant in all four correlation matrices (using Holm adjustment and an significance level of *.002*, because there was one adjusted p-value of *p = .00125*). This left us with `r nrow(get_top_cors(master, for_report = T))` correlations, which can be found in Tab. 2
 
@@ -195,7 +192,7 @@ mean_value_plot(master %>% filter(style != "NA"), weighted = F, type = "style")
 mean_value_plot(master, weighted = F, type = "artist")
 ```
 
-The results for comparing the sub conditions, can be found in Tab. 7, where only significant differences at the 5% level (adjusted) are shown (in the Artist condition the cases with no assigned style are omitted, for a complete table please refer to the Supplementary Material). Both omnibus tests yielded highly significant differences (*p < .001*). A graphical display of mean values and 95% confidence intervals can be seen in Fig. 6 and 7. 
+The results for comparing the subconditions, can be found in Tab. 7, where only significant differences at the 5% level (adjusted) are shown (in the Artist condition the cases with no assigned style are omitted, for a complete table please refer to the Supplementary Material, Tab. 1). Both omnibus tests yielded highly significant differences (*p < .001*). A graphical display of mean values and 95% confidence intervals can be seen in Fig. 6 and 7. 
 
 The main differences are, expectedly, to be found on the subscale **Displeasure**, where values in the Strong subcondition are higher than in the Slight subcondition, with overall larger differences in the Artist main condition. Other differences pertain to **Social Incongruence** (Artist: *Pop* and *Rock*, Style: *Schlager*) and **Not Authentic** (Artist: *Pop* and *Schlager*). All in all, the main differences between the two main and two subconditions lie mostly in the selection of styles as well as in the higher **Displeasure** ratings in the Strong vs. the Slight conditions.
 
@@ -221,16 +218,8 @@ flextable::flextable( ks_tab ,
 ```
 
 
-Both omnibus tests for comparing the main conditions across the same subcondition, resulted in highly significant differences (*p < .001*), but no Kruskal-Walis test survived correction for multiple testing. This is corroborated by the mean value plots in Fig. 8 and 9, which show either similar values throughout for more frequent styles or wide and overlapping confidence Intervals for the less frequent styles. 
+Both omnibus tests for comparing the main conditions across the same subcondition, resulted in highly significant differences (*p < .001*), but no Kruskal-Walis test survived correction for multiple testing. This is corroborated by the mean value plots in the Fig. SM1 and SM2 in the Supplementary Material, which show either similar values throughout for more frequent styles or wide and overlapping confidence Intervals for the less frequent styles. 
 
-
-```{r mean_value_plot_strong,  fig.height = 8, fig.width = 12, echo = FALSE, fig.cap = "Fig. 8. Mean value of style ratings in the Strong sub conditions for the Artist/Style main conditions. Error bars are 95% CI, dot size is proportional to total count of style."}
-mean_value_plot2(master %>% filter(style != "NA"), weighted = F, degree = "strong")
-```
-
-```{r mean_value_plot_slight,  fig.height = 8, fig.width = 12, echo = FALSE, fig.cap = "Fig. 9. Mean value of style ratings in the Slight sub conditions for the Artist/Style main conditions. Error bars are 95% CI, dot size is proportional to total count of style."}
-mean_value_plot2(master %>% filter(style != "NA"), weighted = F, degree = "slight")
-```
 
 ## Aggreement in style ratings across conditions
 
@@ -272,26 +261,15 @@ flextable::flextable( style_diffs ,
                       cwidth = .75, cheight = .2 )%>% 
   fontsize(i = NULL, j = NULL, size = 8, part = "body") %>% 
   fontsize(size = 8, part = "header") %>% 
-  set_caption("Chi-Square tests of differences in style distribution for condition by age group, gender (with diverse), and LPA class. All p-values Bonferroni adjusted.")
+  set_caption("Chi-Square tests of differences in style distribution for condition by age group, gender (with diverse), and LPA class. All p-values Holm adjusted.")
 ```
 
 
 With respect to **Age Group**, the younger (less than 30 years) group clearly more dislikes *Schlager*, *Metal*, and *Pop*, whereas the elder group more dislikes *Traditional*, *Jazz*, *Country*, and *Techno*. On the other hand, the elder age group are more open to *Schlager*, *Metal*, and *Pop*, whereas the younger group has fewer reservations against *Traditional*, *Techno*, and *Jazz*.   
 
-
 There are some stereotypes to be corroborated in the style preferences of males and females. Males dislike more strongly and often *Schlager*, *Pop*, *HipHop*, and *EDM*, but are more fond of *Jazz*, *Metal*,  *Techno*, and also *House*. The female respondents show the clear opposite: more dislikes for styles traditionally often regarded as "virile", such as *Jazz* and *Metal* as well as *Techno*, and fewer reservations against *Schlager*, *EDM*, *HipHop*, and *Pop*.
 
+The differences for **LPA Class** justify their denomination as *Highbrow* and *Lowbrow* reasoning styles. **Highbrows** have more dislikes for *Schlager*, *Traditional*, *EDM*, and *Pop*, whereas *Lowbrow* profiles more strongly dislike *Jazz*, *Metal*, and *Techno* (see Fig. SC1a-d, SC2a-d, SC3a-d in the Supplementary Material; all chi-squared tests in all four conditions with *p < .001*). 
 
-Finally, the differences for **LPA Class** justify their denomination as *Highbrow* and *Lowbrow* reasoning styles. **Highbrows** have more dislikes for *Schlager*, *Traditional*, *EDM*, and *Pop*, whereas *Lowbrow* profiles more strongly dislike *Jazz*, *Metal*, and *Techno*.
+The distribution of **Total LPA Class** is independent from **Age Group** (`r report_chisq_test(table(metadata$age_group, metadata$lpa_class))`), as well as from **Gender** differences (`r report_chisq_test(table(metadata$gender, metadata$lpa_class))`).
 
-```{r chisqres_age_group,  fig.height = 6, fig.width = 9, warning = FALSE, echo = FALSE, fig.cap = "Fig. 5a. Chi-Squared Residuals for styles in  Style/Strong conditions for Age Group"}
-get_prop_table(master, group = "age_group", output_format = "plot")
-```
-
-```{r chisqres_gender,  fig.height = 6, fig.width = 9, warning = FALSE, echo = FALSE, fig.cap = "Fig. 5b. Chi-Squared Residuals for styles in  Style/Strong conditions for Gender"}
-get_prop_table(master, group = "gender", output_format = "plot")
-```
-
-```{r chisqres_lpa_class,  fig.height = 6, fig.width = 9, warning = FALSE, echo = FALSE, fig.cap = "Fig. 5c. Chi-Squared Residuals for styles in  Style/Strong conditions for LPA classes"}
-get_prop_table(master, group = "lpa_class", output_format = "plot")
-```

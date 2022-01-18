@@ -1,0 +1,134 @@
+---
+  title: "Dislikes: Supplementary Material"
+  author: "Klaus Frieler, Julia Merrill"
+  date: "18.01.2022"
+  output: word_document
+
+---
+  
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+library(tidyverse)
+library(flextable)
+source("dislikes.R")
+#source("networks.R")
+master <- setup_workspace(F, F)
+```
+
+## Panel Plots for Dislike Subscales
+
+```{r dS_scales_panel_style_strong,  fig.height = 8, fig.width = 12, fig.cap = "Fig. SP1. Panel plot of Dislike subscales (style/strong)", echo = FALSE}
+psych::pairs.panels(master %>% filter(full_type == "style_strong") %>% select(starts_with("DS")) %>% set_names(fashion_subscale_names(names(.))))
+```
+
+```{r dS_scales_panel_style_slight,  fig.height = 8, fig.width = 12, fig.cap = "Fig. SP2. Panel plot of Dislike subscales (style/slight)", echo = FALSE}
+psych::pairs.panels(master %>% filter(full_type == "style_slight") %>% select(starts_with("DS")) %>% set_names(fashion_subscale_names(names(.))))
+```
+
+```{r dS_scales_panel_artist_strong,  fig.height = 8, fig.width = 12, fig.cap = "Fig. SP3. Panel plot of Dislike subscales (artist/strong)", echo = FALSE}
+psych::pairs.panels(master %>% filter(full_type == "artist_strong") %>% select(starts_with("DS")) %>% set_names(fashion_subscale_names(names(.))))
+```
+
+```{r dS_scales_panel_artist_slight,  fig.height = 8, fig.width = 12, fig.cap = "Fig. SP4. Panel plot of Dislike subscales (artist/slight)", echo = FALSE}
+psych::pairs.panels(master %>% filter(full_type == "artist_slight") %>% select(starts_with("DS")) %>% set_names(fashion_subscale_names(names(.))))
+```
+
+```{r dS_scales_panel _style_strong,  fig.height = 8, fig.width = 12, fig.cap = "Fig. SP5. Panel plot of Dislike subscales (style/strong)", echo = FALSE}
+psych::pairs.panels(master  %>% select(starts_with("DS")) %>% set_names(fashion_subscale_names(names(.))))
+```
+
+## Original eight factors solution
+
+```{r original_fa, eval=FALSE, fig.height = 6, fig.width = 9, warning = FALSE, echo = FALSE}
+  get_efa(master %>% select(all_of(num_vars)), method = "fa", n_factors = 8)
+```
+
+## All Kruskal-Wallis values for differences between styles on  Dislike subscales in all four conditions
+
+```{r ks_tests,  fig.height = 8, fig.width = 12, echo = FALSE}
+
+ks_artist <- get_mean_differences(master %>% filter(type == "artist"), group_var = "degree", target_var = "style", names(master)[str_detect(names(master), "DS")]) %>%  filter(target != "NA", !is.na(p_adj)) %>% mutate(type = "Artist") 
+
+ks_style <- get_mean_differences(master %>% filter(type == "style"), group_var = "degree", target_var = "style", names(master)[str_detect(names(master), "DS")]) %>% filter(!is.na(p_adj)) %>% mutate(type = "Style")
+
+ks_tab <- bind_rows(ks_style, ks_artist) %>% 
+  select(type, target, DS = var, -grouping, d, statistic, N_slight, N_strong, p_adj) %>%
+  mutate(DS = fashion_subscale_names(DS),
+         d = -d,
+         p_adj = sprintf("%.3f%s", p_adj, sig = get_sig_stars(p_adj)), 
+         across(where(is.numeric), round, 3)) %>% 
+  arrange(type, DS, target, desc(d)) %>% 
+  set_names(c("Condition","Style",  "Dislike Subscale", "d (Strong - Slight)", "Statistic", "N (slight)", "N (strong)", "p (adjusted)")) 
+flextable::flextable( ks_tab , 
+                      cwidth = .75, cheight = .2 )%>% 
+  fontsize(i = NULL, j = NULL, size = 8, part = "body") %>% 
+  fontsize(size = 8, part = "header") %>% 
+  set_caption("Significant  differences in style ratings on the Dislike subscales. Last column, p-values are Holm adjusted.")
+```
+
+```{r full_cor,  echo = FALSE, eval = FALSE} 
+master %>% select(starts_with(c("emo", "music", "lyrics", "social", "body"))) %>% correlation::correlation() 
+```
+
+## Mean Value Plots in Strong vs. Slight subconditions
+
+```{r mean_value_plot_strong,  fig.height = 8, fig.width = 12, echo = FALSE, fig.cap = "Fig. SM1. Mean value of style ratings in the Strong sub conditions for the Artist/Style main conditions. Error bars are 95% CI, dot size is proportional to total count of style."}
+mean_value_plot2(master %>% filter(style != "NA"), weighted = F, degree = "strong")
+```
+
+```{r mean_value_plot_slight,  fig.height = 8, fig.width = 12, echo = FALSE, fig.cap = "Fig. SM2. Mean value of style ratings in the Slight sub conditions for the Artist/Style main conditions. Error bars are 95% CI, dot size is proportional to total count of style."}
+mean_value_plot2(master %>% filter(style != "NA"), weighted = F, degree = "slight")
+```
+
+## Chi-squared residual plots for covariates
+
+```{r chisqres_age_group_as, eval=TRUE, fig.height = 6, fig.width = 9, warning = FALSE, echo = FALSE, fig.cap = "Fig. SC1a. Chi-Squared Residuals for styles in  Artist/Strong conditions for Age Group"}
+get_prop_table(master, type = "artist", degree = "strong", group = "age_group", output_format = "plot")
+```
+
+```{r chisqres_age_group_aw, eval=TRUE, fig.height = 6, fig.width = 9, warning = FALSE, echo = FALSE, fig.cap = "Fig. SC1b. Chi-Squared Residuals for styles in  Artist/Slight conditions for Age Group"}
+get_prop_table(master, type = "artist", degree = "slight", group = "age_group", output_format = "plot")
+```
+
+```{r chisqres_age_group_ss, eval=TRUE, fig.height = 6, fig.width = 9, warning = FALSE, echo = FALSE, fig.cap = "Fig. SC1c. Chi-Squared Residuals for styles in  Style/Strong conditions for Age Group"}
+get_prop_table(master, group = "age_group", output_format = "plot")
+```
+
+```{r chisqres_age_group_sw, eval=TRUE, fig.height = 6, fig.width = 9, warning = FALSE, echo = FALSE, fig.cap = "Fig. SC1d. Chi-Squared Residuals for styles in  Style/Slight conditions for Age Group"}
+get_prop_table(master, type = "style", degree = "slight", group = "age_group", output_format = "plot")
+```
+
+```{r chisqres_gender_as, eval=TRUE, fig.height = 6, fig.width = 9, warning = FALSE, echo = FALSE, fig.cap = "Fig. SC2a. Chi-Squared Residuals for styles in  Artist/Strong conditions for Gender"}
+get_prop_table(master, type = "artist", degree = "strong", group = "gender", output_format = "plot")
+```
+
+```{r chisqres_gender_aw, eval=TRUE, fig.height = 6, fig.width = 9, warning = FALSE, echo = FALSE, fig.cap = "Fig. SC2b. Chi-Squared Residuals for styles in  Artist/Slight conditions for Gender"}
+get_prop_table(master, type = "artist", degree = "slight", group = "gender", output_format = "plot")
+```
+
+
+```{r chisqres_gender_ss, eval=TRUE, fig.height = 6, fig.width = 9, warning = FALSE, echo = FALSE, fig.cap = "SC2c. Chi-Squared Residuals for styles in  Style/Strong conditions for Gender"}
+get_prop_table(master, group = "gender", output_format = "plot")
+```
+
+```{r chisqres_gender_sw, eval=TRUE, fig.height = 6, fig.width = 9, warning = FALSE, echo = FALSE, fig.cap = "Fig. SC2d. Chi-Squared Residuals for styles in  Style/Slight conditions for Gender"}
+get_prop_table(master, type = "style", degree = "slight", group = "gender", output_format = "plot")
+```
+
+```{r chisqres_lpa_as, eval=TRUE, fig.height = 6, fig.width = 9, warning = FALSE, echo = FALSE, fig.cap = "Fig. SC3a. Chi-Squared Residuals for styles in  Artist/Strong conditions for LPA Class"}
+get_prop_table(master, type = "artist", degree = "strong", group = "lpa_class", output_format = "plot")
+```
+
+```{r chisqres_lpa_aw, eval=TRUE, fig.height = 6, fig.width = 9, warning = FALSE, echo = FALSE, fig.cap = "Fig. SC3b. Chi-Squared Residuals for styles in  Artist/Slight conditions for LPA Class"}
+get_prop_table(master, type = "artist", degree = "slight", group = "lpa_class", output_format = "plot")
+```
+
+```{r chisqres_lpa_ss, eval=TRUE, fig.height = 6, fig.width = 9, warning = FALSE, echo = FALSE, fig.cap = "Fig. SC3c. Chi-Squared Residuals for styles in  Style/Strong conditions for LPA Class"}
+get_prop_table(master, group = "lpa_class", output_format = "plot")
+```
+
+```{r chisqres_lpa_sw, eval=TRUE, fig.height = 6, fig.width = 9, warning = FALSE, echo = FALSE, fig.cap = "Fig. SC3d. Chi-Squared Residuals for styles in  Style/Slight conditions for LPA Class"}
+get_prop_table(master, type = "style", degree = "slight", group = "lpa_class", output_format = "plot")
+```
+
+

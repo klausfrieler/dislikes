@@ -170,7 +170,7 @@ get_chisq_stats <- function(data, group_var, target_var){
       ) 
     })
     }) %>% 
-    mutate(p_value_adj = p.adjust(p_value),
+    mutate(p_value_adj = (p_value),
            sig = get_sig_stars(p_value_adj))
 
 }
@@ -322,7 +322,7 @@ binary_style_judgments_plot <- function(data, threshold = 3, alpha = .01, with_m
   q
 }
 
-get_kripp_by_style <- function(data, type  = "style", degree = "strong" ){
+get_kripp_by_style <- function(data, type  = "style", degree = "strong", vars = NULL ){
   data <- data %>%  filter(style != "NA") 
   if(nchar(type) > 0){
     data <- data %>% filter(type == !!type)
@@ -331,8 +331,11 @@ get_kripp_by_style <- function(data, type  = "style", degree = "strong" ){
     data <- data %>% filter(degree == !!degree)
   }
   styles <- unique(data$style)
+  if(is.null(vars) || all(nchar(vars) == 0)){
+    vars <- names(data %>% select(starts_with("DS")))
+  }
   map_dfr(styles, function(st){
-    tmp <- data %>% filter(style == st) %>% select(starts_with("DS")) %>% as.matrix()
+    tmp <- data %>% filter(style == st) %>% select(all_of(vars)) %>% as.matrix()
     ka <- tryCatch({
       tmp  %>% irr::kripp.alpha(method = "interval")},
       error = function(e){
@@ -363,17 +366,36 @@ kripp_alpha_style_judgments_plot <- function(all_kas){
     mutate(full_type = fct_reorder(fashion_subscale_names(full_type) %>% str_replace( " ", "/") 
                                    , ka, mean) %>% fct_rev(), 
            style =  fct_reorder(style, ka, mean),
-           label = sprintf("%.2f (%d)", ka, n_raters),
+           label = sprintf("%.2f (%d)", ka, n_raters),#
+           label_color = factor(ka >.0),
            `Krippendorff's Alpha` = ka) 
   #browser()
   q <- plot_data %>% ggplot(aes(x = style, y = full_type, fill = `Krippendorff's Alpha`)) 
   q <- q + geom_tile() 
-  q <- q + geom_text(aes(label = label), color = "white") 
+  q <- q + geom_text(aes(label = label, color = label_color)) 
   q <- q + coord_flip() 
   q <- q + theme_bw()
   q <- q + theme(panel.grid.major =  element_blank(), panel.grid.minor = element_blank(), 
                  strip.background = element_rect(fill = "white"))
   q <- q + viridis::scale_fill_viridis()
+  q <- q + scale_color_manual(values = c("white", "black"), guide = "none")
   q <- q + labs(x = "", y = "")
   q
+}
+
+report_chisq_test <- function(tab, in_brackets = F, effsize = c("cramer"), test = c("Pearson")){
+  stats <- tab %>% vcd::assocstats()
+  eff_size_labels <- c("cramer" =  "Cramer's V")
+  test_label <- c("X^2" = "Chi^2")
+  ret <- sprintf("Chi-squared(%.0f) = %.2f, p = %.3f, %s = %.2f", 
+          stats$chisq_tests[,"df"][["Pearson"]], 
+          stats$chisq_tests[,"X^2"][["Pearson"]],
+          stats$chisq_tests[,"P(> X^2)"][["Pearson"]],
+          eff_size_labels[effsize],
+          stats[[effsize]]
+          )
+  if(in_brackets){
+    ret <- sprintf("(%s)", ret)
+  }
+  ret
 }

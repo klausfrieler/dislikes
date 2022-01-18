@@ -47,7 +47,7 @@ impute_all_vars <- function(data){
 }
 
 get_sig_stars <- Vectorize(function(p_val){
-  if(is.na(p_val)) return(NA)
+  if(is.na(p_val)) return("")
   if(p_val <.001) return("***")
   if(p_val <.01) return("**")
   if(p_val <.05) return("*")
@@ -97,6 +97,12 @@ fashion_subscale_names <- function(subscale_names){
     str_remove_all("PC_") %>% 
     str_replace_all("_", " ") %>% 
     str_to_title()
+}
+
+fashion_full_type <- function(full_type){
+    str_replace_all(full_type, "_", " ") %>% 
+    str_to_title() %>% 
+    str_replace_all(" ", "/")
 }
 
 scale_definition_from_keys <- function(key_file = "data/keys_df.xlsx", sheet = "keys_v3"){
