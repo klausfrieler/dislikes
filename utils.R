@@ -98,6 +98,7 @@ fashion_subscale_names <- function(subscale_names){
     str_replace_all("_", " ") %>% 
     str_to_title()
 }
+
 scale_definition_from_keys <- function(key_file = "data/keys_df.xlsx", sheet = "keys_v3"){
   key_tmp <- readxl::read_xlsx(key_file, sheet = sheet)
   factor_names <- key_tmp %>% select(-1) %>% names()
@@ -109,6 +110,19 @@ scale_definition_from_keys <- function(key_file = "data/keys_df.xlsx", sheet = "
     set_names(c("Subscale", "No. Items", "Items"))
 }
 
+get_items_for_subscale <- function(key_file = "data/keys_df.xlsx", sheet = "keys_v3", subscales){
+  key_tmp <- readxl::read_xlsx(key_file, sheet = sheet) %>% select(all_of(subscales), rowname)
+  if(length(subscales) == 0){
+    stop()
+  }
+  ret <- map(unique(subscales), function(sc){
+    key_tmp <- key_tmp %>% filter(!!sym(sc) != 0) %>% pull(rowname)  
+  })   
+  if(length(subscales) == 1){
+    ret <- unlist(ret)
+  }
+  ret
+}
 
 get_optimal_factors <- function(data, plot = F){
   
