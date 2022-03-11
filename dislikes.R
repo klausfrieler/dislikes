@@ -112,7 +112,7 @@ setup_workspace <- function(reload = T, add_to_global_env = F){
   if(add_to_global_env)assign("master_raw", master, globalenv())
   before <- n_distinct(master$p_id)
   master <- filter_bad_raters(master)
-  after <- n_distinct(master$p_id)
+  after  <- n_distinct(master$p_id)
   messagef("Excluded %d bad raters (%d -> %d)", before -after, before, after)
   var_map <- read_var_map()
   names(master)[names(master) %in% var_map$code] <- var_map$label
