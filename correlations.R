@@ -17,19 +17,18 @@ cmp_all_correlations <- function(data, method = "pearson", prefix = "DS"){
       mutate(p_adj = p.adjust(p), type = ft)
     
   })
-
- cor_all <- bind_rows(cor_full, cor_sub) %>% 
-   as_tibble() 
- names(cor_all)[names(cor_all) == "rho"] <- "r"
- names(cor_all)[names(cor_all) == "tau"] <- "r"
- names(cor_all)[names(cor_all) == "S"] <- "t"
- names(cor_all)[names(cor_all) == "z"] <- "t"
- cor_all$df_error <- NULL
- cor_all <- cor_all %>% 
-   select(var1 = Parameter1, var2 = Parameter2, r, -starts_with("CI"), -t, -Method, p, p_adj, type) %>% 
-   mutate(cor_id = sprintf("%s - %s", var1, var2) %>% fashion_subscale_names()) 
+  cor_all <- bind_rows(cor_full, cor_sub) %>% 
+    as_tibble() 
+  names(cor_all)[names(cor_all) == "rho"] <- "r"
+  names(cor_all)[names(cor_all) == "tau"] <- "r"
+  names(cor_all)[names(cor_all) == "S"] <- "t"
+  names(cor_all)[names(cor_all) == "z"] <- "t"
+  cor_all$df_error <- NULL
+  cor_all <- cor_all %>% 
+    select(var1 = Parameter1, var2 = Parameter2, r, -starts_with("CI"), -t, -Method, p, p_adj, type) %>% 
+    mutate(cor_id = sprintf("%s - %s", var1, var2) %>% fashion_subscale_names()) 
    
- cor_all
+  cor_all
 }
 
 get_sig_cors <- function(data,method = "pearson", alpha = .002, prefix = "DS"){
@@ -40,8 +39,10 @@ get_sig_cors <- function(data,method = "pearson", alpha = .002, prefix = "DS"){
     ungroup()
   
 } 
+
 get_top_cors <- function(data, method = "pearson", alpha = .002, prefix = "DS", for_report = F){
   sig_cor <- get_sig_cors(data, method, alpha, prefix = prefix)
+  #browser()
   top_cor <- sig_cor %>% filter(n_cond_cor == 5) 
   if(for_report){
     # cond_cor <-     top_cor %>% 
@@ -58,6 +59,7 @@ get_top_cors <- function(data, method = "pearson", alpha = .002, prefix = "DS", 
   }
   top_cor
 }
+
 get_all_jennrich_tests <- function(data){
   full_types <- unique(data$full_type)
   map_dfr(full_types, function(ft1){
@@ -121,5 +123,30 @@ get_all_correlations_by_group <-function(data, target_var = "DS_too_emotional", 
   }) %>% mutate(p_adj = p.adjust(p.value)) 
 }
 
+get_partial_correlations_by_group <- function(data, vars){
+  full_types <- unique(data$full_type)
+  map_dfr(full_types, function(ft){
 
+    tmp <- data %>% filter(full_type == ft) %>% 
+      dplyr::select(all_of(vars)) %>% pcor()
+    p_vals <- tmp %>% 
+      pluck(c("p.value")) %>% 
+      round(5) %>% 
+      as.data.frame() %>% 
+      rownames_to_column("var1") %>% 
+      pivot_longer(-var1) %>% rename(p_val = value)  
+    r <- tmp %>% 
+      pluck(c("estimate")) %>% 
+      round(5) %>% 
+      as.data.frame() %>% 
+      rownames_to_column("var1") %>%       
+      pivot_longer(-var1) %>% 
+      rename(r = value)  
+    r %>% left_join(p_vals, by = c("var1", "name")) %>% 
+      mutate(full_type = ft) %>% 
+      rename(var2 = name)
+    
+  }) %>%  
+    filter(var1 != var2) 
+}
   
