@@ -9,6 +9,12 @@ source("plot_utils.R")
 source("contingencies.R")
 source("correlations.R")
 
+median_split <- function(x){
+  ret <- rep(1, length(x))
+  ret[x <= median(x)] <- 0
+  factor(ret)
+}
+
 messagef <- function(...) message(sprintf(...))
 printf <- function(...) print(sprintf(...))
 
@@ -104,6 +110,8 @@ setup_workspace <- function(reload = T, add_to_global_env = F){
     master <- readRDS("data/master.rds")
     if(add_to_global_env){
       assign("master", master, globalenv())
+      DS_vars <- sort(names(master)[str_detect(names(master, "DS_"))])
+      assign("DS_vars", DS_vars, globalenv())
     }
     return(master)
   }
@@ -134,6 +142,8 @@ setup_workspace <- function(reload = T, add_to_global_env = F){
   if(add_to_global_env){
     saveRDS(master, "data/master.RDS")
     assign("master", master, globalenv())
+    DS_vars <- sort(names(master)[str_detect(names(master, "DS_"))])
+    assign("DS_vars", DS_vars, globalenv())
   }
   return(master)
 }
@@ -178,10 +188,11 @@ filter_bad_raters <- function(data){
 
 
 add_alternate_factors <- function(data, 
-                                  exclude_vars = bad_vars2,  
+                                  exclude_vars = bad_vars,  
                                   method = "principal",
                                   imputation_type = c("mice", "no", "median")){
   set.seed(666)
+  browser()
   data <-  data %>% 
     select(-starts_with("PC")) %>% 
     select(-all_of(exclude_vars)) 
@@ -256,7 +267,13 @@ add_cluster_factors <- function(data, nclusters = 8){
 }
 
 
-add_lpa_class <- function(data, type = "style", degree = "strong", use_same_name = F, n_classes = 2, with_diagnostics = F){
+add_lpa_class <- function(data, 
+                          type = "style", 
+                          degree = "strong", 
+                          use_same_name = F, 
+                          n_classes = 2,
+                          models = c(1, 2, 3, 6),
+                          with_diagnostics = F){
   if(use_same_name){
     var_name <- "lpa_class"
   }
@@ -275,12 +292,18 @@ add_lpa_class <- function(data, type = "style", degree = "strong", use_same_name
   }
   if(!is.null(degree) & nchar(degree) > 0){
     data  <-  data %>% filter(degree == !!degree) 
-    
   }
-  labels  <- lpa_class_labels %>% filter(type == !!type, degree == !!degree) 
-  lpa <- data %>%  select(starts_with("DS")) %>% estimate_profiles(n_classes)
+  labels  <- lpa_class_labels %>% filter(type == !!type, degree == !!degree)
+  if(nrow(labels) == 0){
+    labels <- lpa_class_labels[4,]
+    set.seed(666)
+  }
+  #browser()
+  lpa <- data %>%  select(starts_with("DS"), -DS_too_complex, -DS_too_emotional) %>% estimate_profiles(n_classes, models = models)
   if(with_diagnostics)plot_profiles(lpa, add_line = T, rawdata = F) + coord_flip()
   #browser()
+  #return(lpa)
+  #assign("lpa", lpa, globalenv())
   first_PC <- names(data)[str_detect(names(data), "^DS_")][1] 
   tmp <- bind_cols(data, get_data(lpa) %>% select(Class))
   if(nrow(labels) > 0){
@@ -305,7 +328,8 @@ add_lpa_class <- function(data, type = "style", degree = "strong", use_same_name
 
 add_all_lpa_classes <- function(data){
   map_dfr(data %>% group_split(type, degree), function(x){
-    add_lpa_class(x, type = unique(x$type), degree = unique(x$degree), use_same_name = T)
+    models <- ifelse(unique(x$degree) == "strong", 3, 3)
+    add_lpa_class(x, type = unique(x$type), degree = unique(x$degree), models = models, use_same_name = T)
   })
 }
 
@@ -323,6 +347,28 @@ add_total_lpa_class <- function(data){
     group_by(p_id) %>% 
     mutate(total_lpa_class = get_class(lpa_class)) %>% 
     mutate(total_lpa_class = factor(total_lpa_class, levels = lpa_classes)) %>% ungroup()
+}
+
+add_var_based_class <- function(data, var, stub = F){
+  if(length(var) > 1){
+    ret <- map_dfc(var, function(v){
+      add_var_based_class(data, v, stub = T)  
+    })
+    return(data %>% bind_cols(ret))
+  }
+  sum_data <- data %>% 
+    group_by(p_id) %>% 
+    summarise(mtn = mean(!!sym(var)), .groups = "drop")
+  clust <- sum_data %>% 
+    pull(mtn) %>% 
+    mclust::Mclust()
+  class_var <- sprintf("%s_class", var)
+  tmp <- sum_data %>% mutate(!!sym(class_var) := clust$classification) %>% select(-mtn)
+  tmp <- data %>% left_join(tmp, by = "p_id")
+  if(stub){
+    return(tmp %>% select(all_of(class_var)))
+  }
+  tmp
 }
 
 add_scores_from_key <- function(data, 
@@ -344,5 +390,14 @@ add_scores_from_key <- function(data,
   row.names(keys_cleaned) <- var_names
   item_scores <- scoreItems(keys_cleaned, data)
   bind_cols(orig_data, item_scores$scores %>% as.data.frame() %>% as_tibble() %>% set_names(factor_names)) 
+}
+
+get_cronbachs_alpha <- function(data, keys){
+  scale_names <- setdiff(names(master)[str_detect(names(master), "^PC")], "DS_not_authentic")
+  map_dfr(scale_names, function(x) {
+    print(x)
+    tmp <- master  %>% select(all_of(keys %>% filter(!!sym(x) == 1) %>% pull(rowname)))
+    psych::alpha(tmp)$total %>% as.data.frame.matrix() %>% as_tibble() %>% mutate(scale = x)
+  })
 }
 
